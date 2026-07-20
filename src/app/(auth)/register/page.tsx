@@ -10,7 +10,7 @@ export default function RegisterPage() {
 
   return (
     <div
-      className="flex min-h-screen items-center justify-center px-4"
+      className="flex min-h-screen flex-col items-center justify-center px-4"
       style={{ background: C.ink }}
     >
       <div
@@ -86,6 +86,16 @@ export default function RegisterPage() {
           </Link>
         </p>
       </div>
+
+      <p className="mt-6 text-center text-[11px]" style={{ color: C.muted }}>
+        <Link href="/privacy" className="underline">
+          Privacy
+        </Link>{" "}
+        ·{" "}
+        <Link href="/terms" className="underline">
+          Terms
+        </Link>
+      </p>
     </div>
   );
 }
