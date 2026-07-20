@@ -74,3 +74,61 @@ export const TREND_POOL: Trend[] = [
 export function pickTrends(n = 5): Trend[] {
   return [...TREND_POOL].sort(() => Math.random() - 0.5).slice(0, n);
 }
+
+export type PlanMeta = {
+  id: "STARTER" | "GROWTH" | "SCALE";
+  name: string;
+  tagline: string;
+  monthly: number;
+  yearly: number;
+  popular?: boolean;
+  features: string[];
+};
+
+export const PLANS: PlanMeta[] = [
+  {
+    id: "STARTER",
+    name: "Starter",
+    tagline: "Testing the waters, one account at a time.",
+    monthly: 19,
+    yearly: 180,
+    features: [
+      "2 connected accounts",
+      "1 auto-post per day, per account",
+      "Text & image content",
+      "Manual scheduling",
+      "7-day post history",
+    ],
+  },
+  {
+    id: "GROWTH",
+    name: "Growth",
+    tagline: "For creators and small teams posting daily.",
+    monthly: 49,
+    yearly: 468,
+    popular: true,
+    features: [
+      "5 connected accounts",
+      "Up to 3 auto-posts a day, per account",
+      "Video generation included",
+      "Full automation engine",
+      "Trending topic blending",
+      "30-day post history",
+    ],
+  },
+  {
+    id: "SCALE",
+    name: "Scale",
+    tagline: "Agencies and brands running multiple accounts.",
+    monthly: 149,
+    yearly: 1428,
+    features: [
+      "Unlimited connected accounts",
+      "Unlimited auto-posts a day",
+      "Priority video rendering",
+      "Team seats & shared approvals",
+      "Trending topic blending",
+      "Full post history & analytics",
+    ],
+  },
+];

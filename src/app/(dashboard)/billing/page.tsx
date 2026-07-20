@@ -1,6 +1,18 @@
+import { redirect } from "next/navigation";
+import { requireUserId } from "@/lib/api-auth";
+import { prisma } from "@/lib/prisma";
 import { C } from "@/lib/theme";
+import { BillingView } from "@/components/billing/billing-view";
 
-export default function BillingPage() {
+export default async function BillingPage() {
+  const userId = await requireUserId();
+  if (!userId) redirect("/login");
+
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { plan: true, billingCycle: true },
+  });
+
   return (
     <div>
       <h1 className="text-lg font-bold" style={{ color: C.paper }}>
@@ -9,9 +21,12 @@ export default function BillingPage() {
       <p className="mt-0.5 text-xs" style={{ color: C.muted }}>
         Pick the plan that matches how much you&apos;re posting.
       </p>
-      <p className="mt-6 text-sm" style={{ color: C.muted }}>
-        Coming soon.
-      </p>
+      <div className="mt-6">
+        <BillingView
+          currentPlan={user.plan}
+          currentCycle={user.billingCycle === "yearly" ? "yearly" : "monthly"}
+        />
+      </div>
     </div>
   );
 }

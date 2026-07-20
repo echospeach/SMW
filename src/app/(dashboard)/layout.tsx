@@ -1,28 +1,20 @@
-import Link from "next/link";
-import {
-  LayoutDashboard,
-  PenSquare,
-  Zap,
-  Users,
-  CalendarDays,
-  CreditCard,
-  LogOut,
-} from "lucide-react";
-import { auth } from "@/lib/auth";
+import { AlertTriangle, LogOut } from "lucide-react";
 import { logout } from "@/lib/actions/auth";
+import { requireUserId } from "@/lib/api-auth";
+import { auth } from "@/lib/auth";
+import { SidebarNav } from "@/components/dashboard/sidebar-nav";
+import { prisma } from "@/lib/prisma";
 import { C } from "@/lib/theme";
-
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/studio", label: "Content Studio", icon: PenSquare },
-  { href: "/automation", label: "Automation", icon: Zap },
-  { href: "/accounts", label: "Accounts", icon: Users },
-  { href: "/calendar", label: "Calendar", icon: CalendarDays },
-  { href: "/billing", label: "Billing", icon: CreditCard },
-];
+import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
+  const userId = await requireUserId();
+  if (!userId) redirect("/login");
+
+  const [session, draftCount] = await Promise.all([
+    auth(),
+    prisma.post.count({ where: { userId, status: "DRAFT" } }),
+  ]);
 
   return (
     <div className="flex min-h-screen w-full font-sans" style={{ background: C.ink }}>
@@ -42,19 +34,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </span>
         </div>
 
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
-            style={{ color: C.muted }}
-          >
-            <Icon size={17} strokeWidth={2} />
-            <span className="flex-1 text-left tracking-wide">{label}</span>
-          </Link>
-        ))}
+        <SidebarNav />
 
         <div className="flex-1" />
+
+        {draftCount > 0 && (
+          <div
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-[11px]"
+            style={{ background: C.raised, color: C.muted }}
+          >
+            <AlertTriangle size={13} color={C.amber} />
+            {draftCount} draft{draftCount !== 1 ? "s" : ""} need review
+          </div>
+        )}
 
         <div
           className="rounded-lg px-3 py-2 text-[11px]"
