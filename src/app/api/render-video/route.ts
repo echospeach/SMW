@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUserId } from "@/lib/api-auth";
 import { RenderVideoSchema } from "@/lib/validation/render-video";
-import { planIncludesVideo } from "@/lib/plan";
+import { getVideoMonthlyLimit, planIncludesVideo } from "@/lib/plan";
 import { prisma } from "@/lib/prisma";
+import { startOfMonth } from "@/lib/scheduling/engine";
 
 export async function POST(req: NextRequest) {
   const userId = await requireUserId();
@@ -13,6 +14,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "Video generation requires the Growth plan or higher." },
       { status: 403 },
+    );
+  }
+
+  const limit = getVideoMonthlyLimit(user.plan);
+  const usedThisMonth = await prisma.videoRenderLog.count({
+    where: { userId, createdAt: { gte: startOfMonth(new Date()) } },
+  });
+  if (usedThisMonth >= limit) {
+    return NextResponse.json(
+      {
+        error: `You've used all ${limit} video renders included in your plan this month. It resets next month, or upgrade for more.`,
+      },
+      { status: 429 },
     );
   }
 
@@ -39,5 +53,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { jobId } = await res.json();
+  // Logged now, not on completion -- the OpenAI cost is incurred as soon as
+  // the renderer accepts the job, regardless of whether the render ultimately
+  // succeeds or the video ever gets scheduled.
+  await prisma.videoRenderLog.create({ data: { userId } });
+
   return NextResponse.json({ jobId }, { status: 202 });
 }

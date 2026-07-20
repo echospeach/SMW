@@ -11,10 +11,10 @@ const IMAGE_SIZE_BY_RATIO: Record<Ratio, "1024x1536" | "1024x1024" | "1536x1024"
 
 export async function generateBeatImage(beatText: string, ratio: Ratio): Promise<Buffer> {
   const response = await client.images.generate({
-    model: "gpt-image-1",
+    model: "gpt-image-1.5",
     prompt: `Cinematic, photorealistic scene illustrating: "${beatText}". Professional product/lifestyle photography, natural lighting, shallow depth of field. No text, no words, no logos, no watermarks anywhere in the image.`,
     size: IMAGE_SIZE_BY_RATIO[ratio],
-    quality: "medium",
+    quality: "low",
     n: 1,
   });
   const b64 = response.data?.[0]?.b64_json;

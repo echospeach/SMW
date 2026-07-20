@@ -68,6 +68,7 @@ model User {
   automationRules AutomationRule[]
   settings        UserSettings?
   posts           Post[]
+  videoRenderLogs VideoRenderLog[]
 }
 
 model SocialConnection {
@@ -140,4 +141,17 @@ model AutomationFireLog {
   createdAt        DateTime       @default(now())
 
   @@unique([automationRuleId, fireDate, slot])
+}
+
+// One row per accepted video-render job. Counted against the user's plan's
+// monthly video allowance -- logged when a render job is accepted (i.e. real
+// OpenAI cost is about to be incurred), independent of whether the resulting
+// video is ever scheduled as a Post.
+model VideoRenderLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

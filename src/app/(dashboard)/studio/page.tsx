@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { requireUserId } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { C } from "@/lib/theme";
+import { getVideoMonthlyLimit } from "@/lib/plan";
+import { startOfMonth } from "@/lib/scheduling/engine";
 import { ContentStudio } from "@/components/studio/content-studio";
 
 export default async function StudioPage() {
@@ -12,6 +14,11 @@ export default async function StudioPage() {
     prisma.socialConnection.findMany({ where: { userId, connected: true } }),
     prisma.user.findUnique({ where: { id: userId }, select: { plan: true } }),
   ]);
+  const plan = user?.plan ?? "STARTER";
+
+  const videoRendersUsed = await prisma.videoRenderLog.count({
+    where: { userId, createdAt: { gte: startOfMonth(new Date()) } },
+  });
 
   return (
     <div>
@@ -24,7 +31,9 @@ export default async function StudioPage() {
       <div className="mt-6">
         <ContentStudio
           connectedPlatforms={connections.map((c) => c.platformId)}
-          plan={user?.plan ?? "STARTER"}
+          plan={plan}
+          videoRendersUsed={videoRendersUsed}
+          videoRendersLimit={getVideoMonthlyLimit(plan)}
         />
       </div>
     </div>

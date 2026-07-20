@@ -36,12 +36,18 @@ const TONE_LABEL: Record<Tone, string> = {
 export function ContentStudio({
   connectedPlatforms,
   plan,
+  videoRendersUsed,
+  videoRendersLimit,
 }: {
   connectedPlatforms: PlatformId[];
   plan: Plan;
+  videoRendersUsed: number;
+  videoRendersLimit: number;
 }) {
   const router = useRouter();
   const videoAllowed = planIncludesVideo(plan);
+  const [rendersUsed, setRendersUsed] = useState(videoRendersUsed);
+  const videoCapReached = rendersUsed >= videoRendersLimit;
   const [type, setType] = useState<ContentType>("TEXT_POST");
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState<Tone>("CONFIDENT");
@@ -157,9 +163,11 @@ export function ContentStudio({
         body: JSON.stringify({ script: draft, ratio }),
       });
       if (!startRes.ok) {
-        setRenderError("Couldn't start the render. Try again.");
+        const data = await startRes.json().catch(() => null);
+        setRenderError(data?.error ?? "Couldn't start the render. Try again.");
         return;
       }
+      setRendersUsed((n) => n + 1);
       const { jobId } = await startRes.json();
 
       // Each beat now generates an AI image + narration clip before rendering,
@@ -257,6 +265,21 @@ export function ContentStudio({
                 Upgrade in Billing
               </Link>
               .
+            </p>
+          )}
+          {type === "VIDEO" && videoAllowed && videoCapReached && (
+            <p className="mt-1.5 text-[11px]" style={{ color: C.amber }}>
+              You&apos;ve used all {videoRendersLimit} video renders included in your plan this
+              month. Resets next month, or{" "}
+              <Link href="/billing" className="underline">
+                upgrade for more
+              </Link>
+              .
+            </p>
+          )}
+          {type === "VIDEO" && videoAllowed && !videoCapReached && (
+            <p className="mt-1.5 text-[11px]" style={{ color: C.muted }}>
+              {rendersUsed} of {videoRendersLimit} video renders used this month.
             </p>
           )}
         </div>
@@ -405,7 +428,11 @@ export function ContentStudio({
 
         <button
           onClick={generate}
-          disabled={!topic.trim() || generating || (isVideo && !videoAllowed)}
+          disabled={
+            !topic.trim() ||
+            generating ||
+            (isVideo && (!videoAllowed || videoCapReached))
+          }
           className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
           style={{ background: C.amber, color: C.ink }}
         >
@@ -542,7 +569,7 @@ export function ContentStudio({
               <div>
                 <button
                   onClick={renderVideo}
-                  disabled={rendering || !draft.trim()}
+                  disabled={rendering || !draft.trim() || videoCapReached}
                   className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
                   style={{ background: C.raised, color: C.paper, border: `1px solid ${C.line}` }}
                 >
