@@ -5,6 +5,7 @@ export type PublishInput = {
   type: ContentType;
   ratio?: Ratio | null;
   duration?: string | null;
+  videoUrl?: string | null;
 };
 
 export type PublishResult = {

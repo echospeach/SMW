@@ -18,6 +18,7 @@ async function publishDueQueueItems() {
         type: post.type,
         ratio: post.ratio,
         duration: post.duration,
+        videoUrl: post.videoUrl,
       });
       // Scope the update to status: "SCHEDULED" so a concurrent invocation can't double-publish this row.
       const updated = await prisma.post.updateMany({
@@ -75,6 +76,7 @@ async function runAutomationSlots() {
           type: draft.type,
           ratio: draft.ratio,
           duration: draft.duration,
+          videoUrl: draft.videoUrl,
         });
         await prisma.post.update({
           where: { id: draft.id },

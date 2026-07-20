@@ -40,6 +40,9 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
   const [generating, setGenerating] = useState(false);
   const [draft, setDraft] = useState("");
   const [videoDuration, setVideoDuration] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [rendering, setRendering] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
   const [scheduleAt, setScheduleAt] = useState("");
   const [ratio, setRatio] = useState<Ratio | null>(DEFAULT_RATIO_BY_TYPE.TEXT_POST);
   const [ratioTouched, setRatioTouched] = useState(false);
@@ -97,6 +100,8 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
     setGenerating(true);
     setDraft("");
     setVideoDuration(null);
+    setVideoUrl(null);
+    setRenderError(null);
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -123,6 +128,43 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
     }
   }
 
+  async function renderVideo() {
+    if (!draft.trim()) return;
+    setRendering(true);
+    setRenderError(null);
+    setVideoUrl(null);
+    try {
+      const startRes = await fetch("/api/render-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script: draft, ratio }),
+      });
+      if (!startRes.ok) {
+        setRenderError("Couldn't start the render. Try again.");
+        return;
+      }
+      const { jobId } = await startRes.json();
+
+      for (let attempt = 0; attempt < 40; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        const statusRes = await fetch(`/api/render-video/${jobId}`);
+        if (!statusRes.ok) continue;
+        const job = await statusRes.json();
+        if (job.status === "done") {
+          setVideoUrl(job.url);
+          return;
+        }
+        if (job.status === "failed") {
+          setRenderError("Render failed. Try again.");
+          return;
+        }
+      }
+      setRenderError("Render is taking longer than expected. Try again shortly.");
+    } finally {
+      setRendering(false);
+    }
+  }
+
   async function handleSchedule() {
     if (!draft.trim() || targets.size === 0 || !scheduleAt) return;
     setSubmitting(true);
@@ -139,6 +181,7 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
           tone,
           duration: isVideo ? videoDuration : undefined,
           ratio: isVisual ? ratio : undefined,
+          videoUrl: isVideo ? videoUrl : undefined,
           trendLabel: selectedTrend?.label,
         }),
       });
@@ -147,6 +190,7 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
         setTopic("");
         setScheduleAt("");
         setVideoDuration(null);
+        setVideoUrl(null);
         router.push("/dashboard");
         router.refresh();
       }
@@ -376,7 +420,24 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
         )}
         {draft && !generating && (
           <>
-            {isVisual && (
+            {isVideo && videoUrl && (
+              <div
+                className="relative mx-auto overflow-hidden rounded-lg"
+                style={{
+                  aspectRatio: RATIOS.find((r) => r.id === ratio)?.ratio,
+                  height: 220,
+                  border: `1px solid ${C.line}`,
+                }}
+              >
+                <video
+                  src={videoUrl}
+                  controls
+                  className="h-full w-full object-cover"
+                  style={{ background: C.ink }}
+                />
+              </div>
+            )}
+            {isVisual && !(isVideo && videoUrl) && (
               <div
                 className="relative mx-auto flex items-center justify-center overflow-hidden rounded-lg"
                 style={{
@@ -418,11 +479,48 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
             </label>
             <textarea
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                if (isVideo) {
+                  setVideoUrl(null);
+                  setRenderError(null);
+                }
+              }}
               rows={isVideo ? 6 : 5}
               className="w-full resize-none rounded-lg px-3 py-2 font-mono text-sm outline-none"
               style={{ background: C.raised, color: C.paper, border: `1px solid ${C.line}` }}
             />
+            {isVideo && (
+              <div>
+                <button
+                  onClick={renderVideo}
+                  disabled={rendering || !draft.trim()}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
+                  style={{ background: C.raised, color: C.paper, border: `1px solid ${C.line}` }}
+                >
+                  {rendering ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <Film size={15} />
+                  )}
+                  {rendering
+                    ? "Rendering video…"
+                    : videoUrl
+                      ? "Re-render video"
+                      : "Render video"}
+                </button>
+                {renderError && (
+                  <p className="mt-1.5 text-[11px]" style={{ color: C.red }}>
+                    {renderError}
+                  </p>
+                )}
+                {!videoUrl && !rendering && !renderError && (
+                  <p className="mt-1.5 text-[11px]" style={{ color: C.muted }}>
+                    Render the script into a branded video before scheduling.
+                  </p>
+                )}
+              </div>
+            )}
             <div>
               <label className="text-xs" style={{ color: C.muted }}>
                 Schedule for
@@ -437,7 +535,9 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
             </div>
             <button
               onClick={handleSchedule}
-              disabled={targets.size === 0 || !scheduleAt || submitting}
+              disabled={
+                targets.size === 0 || !scheduleAt || submitting || (isVideo && !videoUrl)
+              }
               className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
               style={{ background: C.green, color: C.ink }}
             >

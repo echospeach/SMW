@@ -8,6 +8,7 @@ export type PostSummary = {
   type: ContentType;
   duration: string | null;
   ratio: Ratio | null;
+  videoUrl: string | null;
   scheduledAt: Date | null;
   publishedAt: Date | null;
   createdAt: Date;

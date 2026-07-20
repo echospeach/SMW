@@ -25,14 +25,25 @@ export function Ticket({ post }: { post: PostSummary }) {
       <PlatformBadge id={post.platformId} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          {post.type === "VIDEO" && (
-            <span
-              className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px]"
-              style={{ background: C.ink, color: C.amber }}
-            >
-              <Film size={10} /> {post.duration ?? "0:15"}
-            </span>
-          )}
+          {post.type === "VIDEO" &&
+            (post.videoUrl ? (
+              <a
+                href={post.videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] hover:opacity-80"
+                style={{ background: C.amber, color: C.ink }}
+              >
+                <Film size={10} /> Watch
+              </a>
+            ) : (
+              <span
+                className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px]"
+                style={{ background: C.ink, color: C.amber }}
+              >
+                <Film size={10} /> {post.duration ?? "0:15"}
+              </span>
+            ))}
           {ratioMeta && (
             <span
               className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px]"
