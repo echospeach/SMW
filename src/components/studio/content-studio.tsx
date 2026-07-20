@@ -451,8 +451,15 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
                 <video
                   src={videoUrl}
                   controls
+                  preload="auto"
                   className="h-full w-full object-cover"
                   style={{ background: C.ink }}
+                  onLoadedData={(e) => {
+                    // Chrome paints nothing until playback or a seek — nudge the
+                    // currentTime so the first frame renders as a de facto poster.
+                    const video = e.currentTarget;
+                    if (video.currentTime === 0) video.currentTime = 0.1;
+                  }}
                 />
               </div>
             )}
