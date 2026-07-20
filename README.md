@@ -1,36 +1,106 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SMW
 
-## Getting Started
+Social-media scheduling and automation — Content Studio (Claude-generated drafts),
+per-platform Automation rules, Accounts, Calendar, and Billing. Built with Next.js 16
+(App Router), Prisma 7 + Neon Postgres, Auth.js (Credentials + JWT), and the Anthropic API.
 
-First, run the development server:
+Platform posting is currently mocked (`src/lib/connectors/mock.ts`) behind a
+`PlatformConnector` interface — real OAuth integrations (Meta, X, LinkedIn, TikTok,
+YouTube) drop in later without touching the scheduling engine, API routes, or UI.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Prerequisites
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Node.js 20+
+- A [Neon](https://neon.tech) Postgres project (free tier is fine)
+- An [Anthropic API key](https://console.anthropic.com/)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Install dependencies**
 
-## Learn More
+   ```bash
+   npm install
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. **Configure environment variables** — copy `.env.example` to `.env` and fill in:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   | Variable              | Where to get it                                                                                                            |
+   | --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+   | `DATABASE_URL`        | Neon dashboard → Connect → **pooled** connection string (hostname contains `-pooler`)                                      |
+   | `DIRECT_DATABASE_URL` | Same page → **direct** connection string (no `-pooler`) — used only for migrations                                         |
+   | `AUTH_SECRET`         | Generate with `openssl rand -base64 32` (or `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`) |
+   | `ANTHROPIC_API_KEY`   | [console.anthropic.com](https://console.anthropic.com/) → Settings → API Keys                                              |
+   | `ANTHROPIC_MODEL`     | Defaults to `claude-sonnet-5` if unset — safe to leave as-is                                                               |
+   | `CRON_SECRET`         | Any random string — shared secret the cron trigger sends to `/api/cron/publish`                                            |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. **Run the first migration and seed a demo user**
 
-## Deploy on Vercel
+   ```bash
+   npx prisma migrate dev --name init
+   npm run db:seed
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   Seeds `demo@smw.app` / `password123` with 3 connected platforms and automation
+   rules matching the original design mock, so the app has real data to show
+   immediately.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. **Run it**
+
+   ```bash
+   npm run dev
+   ```
+
+   Visit [http://localhost:3000](http://localhost:3000), which redirects to `/login`.
+
+## Scripts
+
+| Command                           | Purpose                                |
+| --------------------------------- | -------------------------------------- |
+| `npm run dev`                     | Start the dev server                   |
+| `npm run build`                   | Production build (also runs typecheck) |
+| `npm run lint`                    | ESLint                                 |
+| `npm run format` / `format:check` | Prettier write / check                 |
+| `npm run typecheck`               | `tsc --noEmit`                         |
+| `npm test`                        | Run the Vitest unit suite              |
+| `npm run db:migrate`              | `prisma migrate dev`                   |
+| `npm run db:studio`               | Open Prisma Studio against Neon        |
+| `npm run db:seed`                 | Re-run the seed script                 |
+
+## Architecture notes
+
+- **Prisma 7** uses the driver-adapter model (`@prisma/adapter-pg`), not the classic
+  schema-level `datasource.url` — connection strings live in `prisma.config.ts`
+  (migrations, via `DIRECT_DATABASE_URL`) and `src/lib/prisma.ts` (runtime, via the
+  pooled `DATABASE_URL`). The generated client lives at `src/generated/prisma`
+  (gitignored, regenerated by the `postinstall` script).
+- **`src/proxy.ts`** is Next.js 16's renamed `middleware.ts` — same mechanism, new
+  filename. It gates the `(dashboard)` route group and bounces logged-in users away
+  from `/login` and `/register`.
+- **Auth** is Credentials + JWT only (no OAuth login, no adapter/session tables) —
+  see `src/lib/auth.ts`.
+- **The automation engine** (`src/app/api/cron/publish/route.ts`) does two things per
+  invocation: publishes any due `SCHEDULED` post, and — for each enabled automation
+  rule whose time slot is due — pulls the oldest `DRAFT` post for that platform from
+  the content pipeline and publishes it. No draft ready → the slot is skipped. Slot
+  due-ness (`isSlotDue`, `src/lib/scheduling/engine.ts`) uses a 10-minute tolerance
+  window, and `AutomationFireLog` (a unique constraint on rule + day + slot) makes
+  each slot claimable exactly once per day, so an overlapping or retried cron
+  invocation can't double-fire it.
+- **Triggering the cron endpoint**: `.github/workflows/cron-publish.yml` polls every
+  5 minutes via GitHub Actions (Vercel Hobby's cron is capped at once/day, too coarse
+  for multiple automation slots). The workflow step is gated behind a `CRON_ENABLED`
+  repo variable so it no-ops instead of failing on every run until the app is
+  actually deployed. To enable once deployed:
+  1. Set repo secrets `APP_URL` (your deployed URL) and `CRON_SECRET` (same value as
+     the app's `CRON_SECRET` env var).
+  2. Set the repo variable `CRON_ENABLED` to `true`.
+- **Connectors**: `src/lib/connectors/registry.ts` maps each `PlatformId` to a
+  connector implementing `PlatformConnector` (`connect`/`disconnect`/`publish`/
+  `checkStatus`). Every entry is `MockConnector` today; swapping in a real API means
+  writing a new class and changing one line in the registry.
+
+## Deployment
+
+Not yet deployed. When ready: push to Vercel (Next.js + Neon is a standard pairing),
+set the same environment variables as `.env` in the Vercel project settings, then
+follow the cron-enabling steps above.

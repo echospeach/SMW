@@ -3,19 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Check, Star } from "lucide-react";
+import { priceFor, type BillingCycle } from "@/lib/billing";
 import { C, PLANS } from "@/lib/theme";
 
 type Plan = (typeof PLANS)[number];
-type Cycle = "monthly" | "yearly";
-
-function priceFor(plan: Plan, cycle: Cycle) {
-  if (cycle === "monthly") return { amount: plan.monthly, per: "/mo" as const, note: null };
-  return {
-    amount: Math.round(plan.yearly / 12),
-    per: "/mo" as const,
-    note: `billed $${plan.yearly}/yr`,
-  };
-}
+type Cycle = BillingCycle;
 
 export function BillingView({
   currentPlan,

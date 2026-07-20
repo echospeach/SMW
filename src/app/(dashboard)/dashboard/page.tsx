@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus, Radio } from "lucide-react";
 import { redirect } from "next/navigation";
 import { requireUserId } from "@/lib/api-auth";
+import { computeQueueStats } from "@/lib/dashboard-stats";
 import { prisma } from "@/lib/prisma";
 import { PLATFORMS, C } from "@/lib/theme";
 import { StatCard } from "@/components/ui/stat-card";
@@ -27,10 +28,7 @@ export default async function DashboardPage() {
     prisma.socialConnection.count({ where: { userId, connected: true } }),
   ]);
 
-  const scheduled = posts.filter((p) => p.status === "SCHEDULED").length;
-  const published = posts.filter((p) => p.status === "PUBLISHED").length;
-  const drafts = posts.filter((p) => p.status === "DRAFT").length;
-  const next = posts.find((p) => p.status === "SCHEDULED");
+  const { scheduled, published, drafts, next } = computeQueueStats(posts);
 
   return (
     <div className="space-y-6">
