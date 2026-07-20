@@ -176,9 +176,11 @@ export function ContentStudio({
       setRendersUsed((n) => n + 1);
       const { jobId } = startData;
 
-      // Each beat now generates an AI image + narration clip before rendering,
-      // so a full render can take a couple of minutes -- give it real headroom.
-      for (let attempt = 0; attempt < 90; attempt++) {
+      // Each beat now generates an AI image + narration clip before rendering.
+      // Image calls are serialized process-wide to respect a strict OpenAI
+      // rate limit, so overlapping renders (multiple users at once) can
+      // stretch well past a couple of minutes -- give it real headroom.
+      for (let attempt = 0; attempt < 150; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 3000));
         const statusRes = await fetch(`/api/render-video/${jobId}`);
         if (!statusRes.ok) continue;
