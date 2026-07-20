@@ -24,6 +24,12 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "src/generated/**",
     "reference/**",
+    // Separate deployable service with its own package.json/node_modules,
+    // not part of this Next.js app -- see tsconfig.json's exclude for the
+    // same reasoning. Its Remotion render-loop code (e.g. a local `let
+    // cursor` mutated while mapping beats to <Sequence>) isn't a React
+    // component in the Rules-of-Hooks sense the Next.js config assumes.
+    "video-renderer/**",
   ]),
 ]);
 
