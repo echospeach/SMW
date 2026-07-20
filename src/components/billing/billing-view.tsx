@@ -1,8 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Check, Star } from "lucide-react";
+import { Check, CreditCard, Star } from "lucide-react";
 import { priceFor, type BillingCycle } from "@/lib/billing";
 import { C, PLANS } from "@/lib/theme";
 
@@ -12,29 +11,49 @@ type Cycle = BillingCycle;
 export function BillingView({
   currentPlan,
   currentCycle,
+  hasActiveSubscription,
 }: {
   currentPlan: Plan["id"];
   currentCycle: Cycle;
+  hasActiveSubscription: boolean;
 }) {
   const [cycle, setCycle] = useState<Cycle>(currentCycle);
-  const [plan, setPlan] = useState(currentPlan);
   const [pendingPlan, setPendingPlan] = useState<Plan["id"] | null>(null);
+  const [pendingPortal, setPendingPortal] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
 
-  function switchPlan(nextPlan: Plan["id"]) {
+  function goToCheckout(nextPlan: Plan["id"]) {
+    setError(null);
     setPendingPlan(nextPlan);
     startTransition(async () => {
-      const res = await fetch("/api/billing", {
+      const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: nextPlan, billingCycle: cycle }),
+        body: JSON.stringify({ plan: nextPlan, cycle }),
       });
-      if (res.ok) {
-        setPlan(nextPlan);
-        router.refresh();
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.url) {
+        window.location.href = data.url;
+        return;
       }
+      setError(data?.error ?? "Couldn't start checkout.");
       setPendingPlan(null);
+    });
+  }
+
+  function goToPortal() {
+    setError(null);
+    setPendingPortal(true);
+    startTransition(async () => {
+      const res = await fetch("/api/billing/portal", { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setError(data?.error ?? "Couldn't open billing portal.");
+      setPendingPortal(false);
     });
   }
 
@@ -70,10 +89,36 @@ export function BillingView({
         ))}
       </div>
 
+      {hasActiveSubscription && (
+        <div
+          className="mx-auto flex w-fit items-center gap-3 rounded-xl px-4 py-3"
+          style={{ background: C.raised, border: `1px solid ${C.line}` }}
+        >
+          <CreditCard size={16} color={C.amber} />
+          <span className="text-xs" style={{ color: C.muted }}>
+            Manage your payment method, invoices, or cancel anytime.
+          </span>
+          <button
+            onClick={goToPortal}
+            disabled={pendingPortal}
+            className="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-60"
+            style={{ background: C.amber, color: C.ink }}
+          >
+            {pendingPortal ? "Opening…" : "Manage billing"}
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <p className="text-center text-xs" style={{ color: C.red }}>
+          {error}
+        </p>
+      )}
+
       <div className="grid gap-4 md:grid-cols-3">
         {PLANS.map((p) => {
           const price = priceFor(p, cycle);
-          const isCurrent = plan === p.id;
+          const isCurrent = hasActiveSubscription && currentPlan === p.id;
           const busy = isPending && pendingPlan === p.id;
           return (
             <div
@@ -126,8 +171,8 @@ export function BillingView({
               </div>
 
               <button
-                onClick={() => switchPlan(p.id)}
-                disabled={isCurrent || busy}
+                onClick={() => (hasActiveSubscription ? goToPortal() : goToCheckout(p.id))}
+                disabled={isCurrent || busy || pendingPortal}
                 className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-60"
                 style={{
                   background: isCurrent ? "transparent" : p.popular ? C.amber : C.raised,
@@ -135,7 +180,13 @@ export function BillingView({
                   border: `1px solid ${isCurrent ? C.line : p.popular ? C.amber : C.line}`,
                 }}
               >
-                {isCurrent ? "Current plan" : busy ? "Switching…" : `Switch to ${p.name}`}
+                {isCurrent
+                  ? "Current plan"
+                  : busy
+                    ? "Redirecting…"
+                    : hasActiveSubscription
+                      ? `Switch to ${p.name}`
+                      : `Subscribe to ${p.name}`}
               </button>
             </div>
           );
@@ -143,8 +194,7 @@ export function BillingView({
       </div>
 
       <div className="text-center text-[11px]" style={{ color: C.muted }}>
-        Prices shown for prototyping — real checkout needs a payment processor (e.g. Stripe) wired
-        to the backend.
+        Payments and subscriptions are handled by Stripe (test mode).
       </div>
     </div>
   );

@@ -1,8 +1,9 @@
 # SMW
 
 Social-media scheduling and automation — Content Studio (Claude-generated drafts),
-per-platform Automation rules, Accounts, Calendar, and Billing. Built with Next.js 16
-(App Router), Prisma 7 + Neon Postgres, Auth.js (Credentials + JWT), and the Anthropic API.
+per-platform Automation rules, Accounts, Calendar, and real Stripe Billing. Built with
+Next.js 16 (App Router), Prisma 7 + Neon Postgres, Auth.js (Credentials + JWT), the
+Anthropic API, and Stripe. Live at **https://smw-blond.vercel.app**.
 
 Platform posting is currently mocked (`src/lib/connectors/mock.ts`) behind a
 `PlatformConnector` interface — real OAuth integrations (Meta, X, LinkedIn, TikTok,
@@ -13,6 +14,7 @@ YouTube) drop in later without touching the scheduling engine, API routes, or UI
 - Node.js 20+
 - A [Neon](https://neon.tech) Postgres project (free tier is fine)
 - An [Anthropic API key](https://console.anthropic.com/)
+- A [Stripe](https://dashboard.stripe.com/) account (test mode is fine)
 
 ## Setup
 
@@ -32,6 +34,9 @@ YouTube) drop in later without touching the scheduling engine, API routes, or UI
    | `ANTHROPIC_API_KEY`   | [console.anthropic.com](https://console.anthropic.com/) → Settings → API Keys                                              |
    | `ANTHROPIC_MODEL`     | Defaults to `claude-sonnet-5` if unset — safe to leave as-is                                                               |
    | `CRON_SECRET`         | Any random string — shared secret the cron trigger sends to `/api/cron/publish`                                            |
+   | `STRIPE_SECRET_KEY`   | [dashboard.stripe.com/apikeys](https://dashboard.stripe.com/apikeys) → secret key (test mode, `sk_test_...`)               |
+
+   `STRIPE_PORTAL_CONFIGURATION_ID` and `STRIPE_WEBHOOK_SECRET` come from steps 4 and 5 below — leave them blank for now.
 
 3. **Run the first migration and seed a demo user**
 
@@ -44,7 +49,22 @@ YouTube) drop in later without touching the scheduling engine, API routes, or UI
    rules matching the original design mock, so the app has real data to show
    immediately.
 
-4. **Run it**
+4. **Create the Stripe products/prices/billing-portal config** (idempotent — safe to re-run)
+
+   ```bash
+   npm run stripe:setup
+   ```
+
+   Prints a `STRIPE_PORTAL_CONFIGURATION_ID` — add it to `.env`.
+
+5. **Create the Stripe webhook** pointing at wherever the app is reachable (your deployed
+   URL, or an `ngrok`/`stripe listen` tunnel for local testing) via the
+   [Stripe dashboard](https://dashboard.stripe.com/webhooks) → Add endpoint, URL
+   `<your-url>/api/stripe/webhook`, events `checkout.session.completed`,
+   `customer.subscription.updated`, `customer.subscription.deleted`. Copy the signing
+   secret into `.env` as `STRIPE_WEBHOOK_SECRET`.
+
+6. **Run it**
 
    ```bash
    npm run dev
@@ -54,17 +74,18 @@ YouTube) drop in later without touching the scheduling engine, API routes, or UI
 
 ## Scripts
 
-| Command                           | Purpose                                |
-| --------------------------------- | -------------------------------------- |
-| `npm run dev`                     | Start the dev server                   |
-| `npm run build`                   | Production build (also runs typecheck) |
-| `npm run lint`                    | ESLint                                 |
-| `npm run format` / `format:check` | Prettier write / check                 |
-| `npm run typecheck`               | `tsc --noEmit`                         |
-| `npm test`                        | Run the Vitest unit suite              |
-| `npm run db:migrate`              | `prisma migrate dev`                   |
-| `npm run db:studio`               | Open Prisma Studio against Neon        |
-| `npm run db:seed`                 | Re-run the seed script                 |
+| Command                           | Purpose                                                          |
+| --------------------------------- | ---------------------------------------------------------------- |
+| `npm run dev`                     | Start the dev server                                             |
+| `npm run build`                   | Production build (also runs typecheck)                           |
+| `npm run lint`                    | ESLint                                                           |
+| `npm run format` / `format:check` | Prettier write / check                                           |
+| `npm run typecheck`               | `tsc --noEmit`                                                   |
+| `npm test`                        | Run the Vitest unit suite                                        |
+| `npm run db:migrate`              | `prisma migrate dev`                                             |
+| `npm run db:studio`               | Open Prisma Studio against Neon                                  |
+| `npm run db:seed`                 | Re-run the seed script                                           |
+| `npm run stripe:setup`            | Create/verify Stripe products, prices, and billing portal config |
 
 ## Architecture notes
 
@@ -98,9 +119,27 @@ YouTube) drop in later without touching the scheduling engine, API routes, or UI
   connector implementing `PlatformConnector` (`connect`/`disconnect`/`publish`/
   `checkStatus`). Every entry is `MockConnector` today; swapping in a real API means
   writing a new class and changing one line in the registry.
+- **Billing** is real Stripe Checkout (`/api/billing/checkout`) for a first
+  subscription and the Stripe customer billing portal (`/api/billing/portal`) for
+  switching plans, updating payment methods, or canceling — no custom
+  upgrade/downgrade/proration logic of our own. `src/app/api/stripe/webhook/route.ts`
+  is the single source of truth for `User.plan`/`billingCycle`/`stripeSubscriptionId`,
+  driven by `checkout.session.completed`, `customer.subscription.updated`, and
+  `customer.subscription.deleted`. `scripts/setup-stripe.ts` is the idempotent,
+  re-runnable setup for the Stripe-side Products/Prices/portal config — Product and
+  Price IDs are never hardcoded; the app looks them up at runtime by `lookup_key`
+  (`src/lib/stripe/plans.ts`).
 
 ## Deployment
 
-Not yet deployed. When ready: push to Vercel (Next.js + Neon is a standard pairing),
-set the same environment variables as `.env` in the Vercel project settings, then
-follow the cron-enabling steps above.
+Live on Vercel at **https://smw-blond.vercel.app**, deployed via the Vercel CLI
+(`vercel --prod`) with all env vars pushed to Production/Preview/Development through
+`vercel env add`. The GitHub repo isn't yet connected for auto-deploy-on-push — that
+needs a one-time authorization in the Vercel dashboard (Project → Settings → Git →
+Connect Git Repository) that the CLI can't complete non-interactively; until then,
+ship changes with `vercel --prod` from a clean working tree.
+
+The Stripe webhook endpoint is registered against the production URL specifically —
+if the production domain ever changes, re-run the webhook creation step (or update the
+existing endpoint's URL in the Stripe dashboard) and update `STRIPE_WEBHOOK_SECRET`
+everywhere it's set.

@@ -53,13 +53,16 @@ enum Tone {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  plan         Plan     @default(STARTER)
-  billingCycle String   @default("monthly")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  email                String   @unique
+  passwordHash         String
+  plan                 Plan     @default(STARTER)
+  billingCycle         String   @default("monthly")
+  stripeCustomerId     String?  @unique
+  stripeSubscriptionId String?  @unique
+  subscriptionStatus   String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   connections     SocialConnection[]
   automationRules AutomationRule[]

@@ -10,7 +10,7 @@ export default async function BillingPage() {
 
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
-    select: { plan: true, billingCycle: true },
+    select: { plan: true, billingCycle: true, stripeSubscriptionId: true },
   });
 
   return (
@@ -25,6 +25,7 @@ export default async function BillingPage() {
         <BillingView
           currentPlan={user.plan}
           currentCycle={user.billingCycle === "yearly" ? "yearly" : "monthly"}
+          hasActiveSubscription={user.stripeSubscriptionId != null}
         />
       </div>
     </div>
