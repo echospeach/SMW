@@ -456,9 +456,11 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
                   style={{ background: C.ink }}
                   onLoadedData={(e) => {
                     // Chrome paints nothing until playback or a seek — nudge the
-                    // currentTime so the first frame renders as a de facto poster.
+                    // currentTime so a frame renders as a de facto poster. Seek past
+                    // the composition's ~0.5s entrance fade, or the seeked frame is
+                    // still nearly transparent and looks like a blank/black box.
                     const video = e.currentTarget;
-                    if (video.currentTime === 0) video.currentTime = 0.1;
+                    if (video.currentTime === 0) video.currentTime = 0.6;
                   }}
                 />
               </div>
