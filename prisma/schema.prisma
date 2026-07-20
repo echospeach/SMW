@@ -1,0 +1,139 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Plan {
+  STARTER
+  GROWTH
+  SCALE
+}
+
+enum PlatformId {
+  FACEBOOK
+  INSTAGRAM
+  X
+  LINKEDIN
+  TIKTOK
+  YOUTUBE
+}
+
+enum ContentType {
+  TEXT_POST
+  IMAGE_POST
+  CAROUSEL
+  STORY
+  VIDEO
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+enum Ratio {
+  PORTRAIT
+  SQUARE
+  LANDSCAPE
+}
+
+enum Tone {
+  CONFIDENT
+  PLAYFUL
+  INFORMATIVE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  plan         Plan     @default(STARTER)
+  billingCycle String   @default("monthly")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  connections     SocialConnection[]
+  automationRules AutomationRule[]
+  settings        UserSettings?
+  posts           Post[]
+}
+
+model SocialConnection {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platformId  PlatformId
+  connected   Boolean    @default(false)
+  handle      String?
+  connectedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([userId, platformId])
+}
+
+model AutomationRule {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platformId PlatformId
+  enabled    Boolean    @default(false)
+  times      String[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  fireLogs AutomationFireLog[]
+
+  @@unique([userId, platformId])
+}
+
+model UserSettings {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  autoTrending Boolean @default(true)
+}
+
+model Post {
+  id                     String      @id @default(cuid())
+  userId                 String
+  user                   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platformId             PlatformId
+  text                   String
+  status                 PostStatus  @default(DRAFT)
+  type                   ContentType @default(TEXT_POST)
+  tone                   Tone?
+  duration               String?
+  ratio                  Ratio?
+  scheduledAt            DateTime?
+  publishedAt            DateTime?
+  failureReason          String?
+  sourceAutomationRuleId String?
+  trendLabel             String?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  @@index([userId, status, scheduledAt])
+}
+
+// Idempotency guard for the automation engine: one row per (rule, calendar day, slot)
+// prevents double-firing when the cron trigger overlaps or retries.
+model AutomationFireLog {
+  id               String         @id @default(cuid())
+  automationRuleId String
+  automationRule   AutomationRule @relation(fields: [automationRuleId], references: [id], onDelete: Cascade)
+  fireDate         DateTime       @db.Date
+  slot             String
+  createdAt        DateTime       @default(now())
+
+  @@unique([automationRuleId, fireDate, slot])
+}
