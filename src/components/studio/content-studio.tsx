@@ -153,7 +153,9 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
       }
       const { jobId } = await startRes.json();
 
-      for (let attempt = 0; attempt < 40; attempt++) {
+      // Each beat now generates an AI image + narration clip before rendering,
+      // so a full render can take a couple of minutes -- give it real headroom.
+      for (let attempt = 0; attempt < 90; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 3000));
         const statusRes = await fetch(`/api/render-video/${jobId}`);
         if (!statusRes.ok) continue;
@@ -542,9 +544,16 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
                     {renderError}
                   </p>
                 )}
+                {rendering && (
+                  <p className="mt-1.5 text-[11px]" style={{ color: C.muted }}>
+                    Generating narration and visuals for each beat, then rendering — this can
+                    take a couple of minutes.
+                  </p>
+                )}
                 {!videoUrl && !rendering && !renderError && (
                   <p className="mt-1.5 text-[11px]" style={{ color: C.muted }}>
-                    Render the script into a branded video before scheduling.
+                    Render the script into a branded video, complete with AI narration and
+                    visuals, before scheduling.
                   </p>
                 )}
               </div>

@@ -6,6 +6,8 @@ import cors from "cors";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 import { put } from "@vercel/blob";
+import { enrichScript } from "./beat-enrichment";
+import type { Ratio } from "./remotion/types";
 
 const PORT = Number(process.env.PORT) || 4000;
 const RENDER_SECRET = process.env.RENDER_SECRET;
@@ -13,8 +15,10 @@ const RENDER_SECRET = process.env.RENDER_SECRET;
 if (!RENDER_SECRET) {
   throw new Error("RENDER_SECRET env var is required");
 }
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error("OPENAI_API_KEY env var is required");
+}
 
-type Ratio = "PORTRAIT" | "SQUARE" | "LANDSCAPE";
 type JobStatus = "pending" | "rendering" | "done" | "failed";
 type Job = { status: JobStatus; url?: string; error?: string };
 
@@ -33,8 +37,11 @@ function getBundleLocation(): Promise<string> {
 async function runRender(jobId: string, script: string, ratio: Ratio) {
   try {
     jobs.set(jobId, { status: "rendering" });
+
+    const beats = await enrichScript(jobId, script, ratio);
+
     const serveUrl = await getBundleLocation();
-    const inputProps = { script, ratio };
+    const inputProps = { beats, ratio };
 
     const composition = await selectComposition({ serveUrl, id: "SocialVideo", inputProps });
 

@@ -1,6 +1,8 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Audio,
+  Img,
   interpolate,
   Sequence,
   spring,
@@ -10,7 +12,7 @@ import {
 import { loadFont as loadDisplayFont } from "@remotion/google-fonts/BricolageGrotesque";
 import { loadFont as loadMonoFont } from "@remotion/google-fonts/JetBrainsMono";
 import { C } from "./theme";
-import type { Beat } from "./parse-script";
+import type { EnrichedBeat } from "./types";
 
 const { fontFamily: displayFont } = loadDisplayFont("normal", { weights: ["700", "800"] });
 const { fontFamily: monoFont } = loadMonoFont("normal", { weights: ["500"] });
@@ -35,7 +37,7 @@ function fontSizeFor(text: string, width: number): number {
 
 const TRANSITION_FRAMES = 15;
 
-function BeatSlide({ label, text }: { label: string; text: string }) {
+function BeatSlide({ label, text, imageUrl, audioUrl }: EnrichedBeat) {
   const frame = useCurrentFrame();
   const { width, durationInFrames, fps } = useVideoConfig();
 
@@ -50,59 +52,57 @@ function BeatSlide({ label, text }: { label: string; text: string }) {
   const translateY = interpolate(entrance, [0, 1], [24, 0]);
 
   return (
-    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", padding: "8%" }}>
-      <div
+    <AbsoluteFill>
+      {imageUrl && (
+        <Img src={imageUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      )}
+      {/* Scrim over the photo so the overlaid caption stays readable */}
+      <AbsoluteFill
         style={{
-          opacity,
-          transform: `translateY(${translateY}px)`,
-          textAlign: "center",
-          maxWidth: "88%",
+          background: `linear-gradient(180deg, ${C.ink}80 0%, ${C.ink}B3 55%, ${C.ink}E6 100%)`,
         }}
-      >
-        {label && (
-          <div
-            style={{
-              fontFamily: monoFont,
-              fontWeight: 500,
-              fontSize: width / 32,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              color: C.amber,
-              marginBottom: "1.4em",
-            }}
-          >
-            {label}
-          </div>
-        )}
+      />
+      {audioUrl && <Audio src={audioUrl} />}
+      <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", padding: "8%" }}>
         <div
           style={{
-            fontFamily: displayFont,
-            fontWeight: 800,
-            fontSize: fontSizeFor(text, width),
-            lineHeight: 1.15,
-            color: C.paper,
-            letterSpacing: "-0.01em",
+            opacity,
+            transform: `translateY(${translateY}px)`,
+            textAlign: "center",
+            maxWidth: "88%",
           }}
         >
-          {text}
+          {label && (
+            <div
+              style={{
+                fontFamily: monoFont,
+                fontWeight: 500,
+                fontSize: width / 32,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                color: C.amber,
+                marginBottom: "1.4em",
+              }}
+            >
+              {label}
+            </div>
+          )}
+          <div
+            style={{
+              fontFamily: displayFont,
+              fontWeight: 800,
+              fontSize: fontSizeFor(text, width),
+              lineHeight: 1.15,
+              color: C.paper,
+              letterSpacing: "-0.01em",
+              textShadow: "0 2px 16px rgba(0,0,0,0.6)",
+            }}
+          >
+            {text}
+          </div>
         </div>
-      </div>
+      </AbsoluteFill>
     </AbsoluteFill>
-  );
-}
-
-function AmbientGlow() {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const pulse = 0.75 + 0.25 * Math.sin((frame / fps) * 1.1);
-  return (
-    <AbsoluteFill
-      style={{
-        background: `radial-gradient(circle at 50% 42%, ${C.amber}${Math.round(pulse * 22)
-          .toString(16)
-          .padStart(2, "0")} 0%, transparent 55%)`,
-      }}
-    />
   );
 }
 
@@ -135,21 +135,16 @@ function ProgressBar() {
   );
 }
 
-export function VideoTemplate({ beats }: { beats: Beat[] }) {
+export function VideoTemplate({ beats }: { beats: EnrichedBeat[] }) {
   let cursor = 0;
   return (
-    <AbsoluteFill
-      style={{
-        background: `linear-gradient(135deg, ${C.raised}, ${C.ink})`,
-      }}
-    >
-      <AmbientGlow />
+    <AbsoluteFill style={{ background: C.ink }}>
       {beats.map((beat, i) => {
         const from = cursor;
         cursor += beat.durationInFrames;
         return (
           <Sequence key={i} from={from} durationInFrames={beat.durationInFrames} layout="none">
-            <BeatSlide label={beat.label} text={beat.text} />
+            <BeatSlide {...beat} />
           </Sequence>
         );
       })}
