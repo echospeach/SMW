@@ -22,8 +22,10 @@ function buildUserPrompt(req: GenerateRequest): string {
     `Content type: ${req.type}`,
     `Topic: ${req.topic}`,
     `Tone: ${TONE_LABEL[req.tone]}`,
-    `Target platforms: ${req.targetPlatforms.join(", ")}`,
   ];
+  if (req.targetPlatforms.length > 0) {
+    lines.push(`Target platforms: ${req.targetPlatforms.join(", ")}`);
+  }
   if (req.selectedTrend) {
     lines.push(
       `Weave in this trending topic where it fits naturally: "${req.selectedTrend.label}"`,

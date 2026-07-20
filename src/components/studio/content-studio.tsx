@@ -43,6 +43,8 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [scheduleAt, setScheduleAt] = useState("");
   const [ratio, setRatio] = useState<Ratio | null>(DEFAULT_RATIO_BY_TYPE.TEXT_POST);
   const [ratioTouched, setRatioTouched] = useState(false);
@@ -102,6 +104,7 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
     setVideoDuration(null);
     setVideoUrl(null);
     setRenderError(null);
+    setGenerateError(null);
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -122,7 +125,12 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
         } else {
           setDraft(data.draft);
         }
+      } else {
+        const data = await res.json().catch(() => null);
+        setGenerateError(data?.error ?? "Couldn't generate a draft. Try again.");
       }
+    } catch {
+      setGenerateError("Couldn't reach the server. Check your connection and try again.");
     } finally {
       setGenerating(false);
     }
@@ -168,6 +176,7 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
   async function handleSchedule() {
     if (!draft.trim() || targets.size === 0 || !scheduleAt) return;
     setSubmitting(true);
+    setScheduleError(null);
     try {
       const res = await fetch("/api/queue", {
         method: "POST",
@@ -193,7 +202,12 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
         setVideoUrl(null);
         router.push("/dashboard");
         router.refresh();
+      } else {
+        const data = await res.json().catch(() => null);
+        setScheduleError(data?.error ?? "Couldn't add this to the queue. Try again.");
       }
+    } catch {
+      setScheduleError("Couldn't reach the server. Check your connection and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -390,6 +404,11 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
               ? "Generate video"
               : "Generate draft"}
         </button>
+        {generateError && (
+          <p className="text-[11px]" style={{ color: C.red }}>
+            {generateError}
+          </p>
+        )}
       </div>
 
       <div
@@ -545,6 +564,11 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
                 ? "Adding…"
                 : `Add to queue · ${targets.size} platform${targets.size !== 1 ? "s" : ""}`}
             </button>
+            {scheduleError && (
+              <p className="text-[11px]" style={{ color: C.red }}>
+                {scheduleError}
+              </p>
+            )}
           </>
         )}
       </div>

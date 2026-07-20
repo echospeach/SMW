@@ -69,8 +69,8 @@ describe("GenerateRequestSchema", () => {
     expect(GenerateRequestSchema.safeParse({ ...base, topic: "" }).success).toBe(false);
   });
 
-  it("rejects an empty targetPlatforms array", () => {
-    expect(GenerateRequestSchema.safeParse({ ...base, targetPlatforms: [] }).success).toBe(false);
+  it("accepts an empty targetPlatforms array (no accounts connected yet)", () => {
+    expect(GenerateRequestSchema.safeParse({ ...base, targetPlatforms: [] }).success).toBe(true);
   });
 
   it("rejects an unknown tone", () => {
