@@ -65,7 +65,9 @@ async function runRender(jobId: string, script: string, ratio: Ratio) {
 
     jobs.set(jobId, { status: "done", url: blob.url });
   } catch (err) {
-    jobs.set(jobId, { status: "failed", error: err instanceof Error ? err.message : String(err) });
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[render ${jobId}] failed:`, err);
+    jobs.set(jobId, { status: "failed", error: message });
   }
 }
 

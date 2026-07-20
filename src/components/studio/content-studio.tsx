@@ -188,7 +188,7 @@ export function ContentStudio({
           return;
         }
         if (job.status === "failed") {
-          setRenderError("Render failed. Try again.");
+          setRenderError(job.error ? `Render failed: ${job.error}` : "Render failed. Try again.");
           return;
         }
       }
