@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUserId } from "@/lib/api-auth";
 import { RenderVideoSchema } from "@/lib/validation/render-video";
+import { planIncludesVideo } from "@/lib/plan";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const userId = await requireUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+  if (!user || !planIncludesVideo(user.plan)) {
+    return NextResponse.json(
+      { error: "Video generation requires the Growth plan or higher." },
+      { status: 403 },
+    );
+  }
 
   const body = await req.json().catch(() => null);
   const parsed = RenderVideoSchema.safeParse(body);

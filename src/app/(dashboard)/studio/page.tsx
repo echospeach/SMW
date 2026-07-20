@@ -8,9 +8,10 @@ export default async function StudioPage() {
   const userId = await requireUserId();
   if (!userId) redirect("/login");
 
-  const connections = await prisma.socialConnection.findMany({
-    where: { userId, connected: true },
-  });
+  const [connections, user] = await Promise.all([
+    prisma.socialConnection.findMany({ where: { userId, connected: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { plan: true } }),
+  ]);
 
   return (
     <div>
@@ -21,7 +22,10 @@ export default async function StudioPage() {
         Brief it, generate it, schedule it.
       </p>
       <div className="mt-6">
-        <ContentStudio connectedPlatforms={connections.map((c) => c.platformId)} />
+        <ContentStudio
+          connectedPlatforms={connections.map((c) => c.platformId)}
+          plan={user?.plan ?? "STARTER"}
+        />
       </div>
     </div>
   );

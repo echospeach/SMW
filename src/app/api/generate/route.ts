@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUserId } from "@/lib/api-auth";
 import { generateContent } from "@/lib/ai/generate";
 import { GenerateRequestSchema } from "@/lib/validation/generate";
+import { planIncludesVideo } from "@/lib/plan";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const userId = await requireUserId();
@@ -14,6 +16,16 @@ export async function POST(req: NextRequest) {
       { error: parsed.error.issues[0]?.message ?? "Invalid input" },
       { status: 400 },
     );
+  }
+
+  if (parsed.data.type === "VIDEO") {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+    if (!user || !planIncludesVideo(user.plan)) {
+      return NextResponse.json(
+        { error: "Video generation requires the Growth plan or higher." },
+        { status: 403 },
+      );
+    }
   }
 
   const result = await generateContent(parsed.data);

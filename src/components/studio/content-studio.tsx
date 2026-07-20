@@ -13,8 +13,10 @@ import {
   TrendingUp,
   Video,
 } from "lucide-react";
-import type { ContentType, PlatformId, Ratio, Tone } from "@/generated/prisma/enums";
+import type { ContentType, Plan, PlatformId, Ratio, Tone } from "@/generated/prisma/enums";
 import { C, DEFAULT_RATIO_BY_TYPE, PLATFORMS, RATIOS, type Trend } from "@/lib/theme";
+import { planIncludesVideo } from "@/lib/plan";
+import Link from "next/link";
 
 const CONTENT_TYPES: { id: ContentType; label: string }[] = [
   { id: "TEXT_POST", label: "Text post" },
@@ -31,8 +33,15 @@ const TONE_LABEL: Record<Tone, string> = {
   INFORMATIVE: "Informative",
 };
 
-export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: PlatformId[] }) {
+export function ContentStudio({
+  connectedPlatforms,
+  plan,
+}: {
+  connectedPlatforms: PlatformId[];
+  plan: Plan;
+}) {
   const router = useRouter();
+  const videoAllowed = planIncludesVideo(plan);
   const [type, setType] = useState<ContentType>("TEXT_POST");
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState<Tone>("CONFIDENT");
@@ -236,11 +245,20 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
             style={{ background: C.raised, color: C.paper, border: `1px solid ${C.line}` }}
           >
             {CONTENT_TYPES.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
+              <option key={t.id} value={t.id} disabled={t.id === "VIDEO" && !videoAllowed}>
+                {t.id === "VIDEO" && !videoAllowed ? `${t.label} (Growth plan or higher)` : t.label}
               </option>
             ))}
           </select>
+          {type === "VIDEO" && !videoAllowed && (
+            <p className="mt-1.5 text-[11px]" style={{ color: C.amber }}>
+              Video generation needs the Growth plan or higher.{" "}
+              <Link href="/billing" className="underline">
+                Upgrade in Billing
+              </Link>
+              .
+            </p>
+          )}
         </div>
 
         <div>
@@ -387,7 +405,7 @@ export function ContentStudio({ connectedPlatforms }: { connectedPlatforms: Plat
 
         <button
           onClick={generate}
-          disabled={!topic.trim() || generating}
+          disabled={!topic.trim() || generating || (isVideo && !videoAllowed)}
           className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
           style={{ background: C.amber, color: C.ink }}
         >
