@@ -1,0 +1,84 @@
+"use server";
+
+import { hash } from "bcryptjs";
+import { CredentialsSignin } from "next-auth";
+import { PlatformId } from "@/generated/prisma/enums";
+import { prisma } from "@/lib/prisma";
+import { signIn, signOut } from "@/lib/auth";
+import { RegisterSchema } from "@/lib/validation/auth";
+
+export type AuthFormState = { error?: string } | undefined;
+
+// Sensible default posting rhythm pre-filled for a new user; automation stays off
+// until they connect an account and opt in.
+const DEFAULT_AUTOMATION_TIMES: Record<PlatformId, string[]> = {
+  FACEBOOK: ["09:00", "13:30", "19:00"],
+  INSTAGRAM: ["08:30", "17:00"],
+  X: ["09:00", "12:00", "16:00"],
+  LINKEDIN: ["10:00"],
+  TIKTOK: ["18:00"],
+  YOUTUBE: ["15:00"],
+};
+
+export async function register(
+  _prevState: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = RegisterSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+  const { email, password } = parsed.data;
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    return { error: "An account with that email already exists." };
+  }
+
+  const passwordHash = await hash(password, 10);
+
+  await prisma.user.create({
+    data: {
+      email,
+      passwordHash,
+      settings: { create: { autoTrending: true } },
+      connections: {
+        create: Object.values(PlatformId).map((platformId) => ({
+          platformId,
+          connected: false,
+        })),
+      },
+      automationRules: {
+        create: Object.values(PlatformId).map((platformId) => ({
+          platformId,
+          enabled: false,
+          times: DEFAULT_AUTOMATION_TIMES[platformId],
+        })),
+      },
+    },
+  });
+
+  await signIn("credentials", { email, password, redirectTo: "/dashboard" });
+}
+
+export async function login(_prevState: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  try {
+    await signIn("credentials", {
+      email: formData.get("email"),
+      password: formData.get("password"),
+      redirectTo: "/dashboard",
+    });
+  } catch (error) {
+    if (error instanceof CredentialsSignin) {
+      return { error: "Invalid email or password." };
+    }
+    throw error;
+  }
+}
+
+export async function logout() {
+  await signOut({ redirectTo: "/login" });
+}
