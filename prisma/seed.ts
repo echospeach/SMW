@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { hash } from "bcryptjs";
 import { PlatformId } from "../src/generated/prisma/enums";
 import { prisma } from "../src/lib/prisma";
