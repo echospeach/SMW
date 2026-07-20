@@ -37,7 +37,19 @@ function fontSizeFor(text: string, width: number): number {
 
 const TRANSITION_FRAMES = 15;
 
-function BeatSlide({ label, text, imageUrl, audioUrl }: EnrichedBeat) {
+// The same hero image is reused across every beat, so each beat gets a
+// different slow pan/zoom ("Ken Burns effect") to keep the video feeling
+// alive instead of static. Scale never drops to 1.0 so panning never reveals
+// the image's edge -- the overscan margin (8-18%) comfortably covers the
+// small percentage pans below.
+const KEN_BURNS_PRESETS = [
+  { fromScale: 1.08, toScale: 1.18, fromX: 0, toX: -3, fromY: 0, toY: -2 },
+  { fromScale: 1.18, toScale: 1.08, fromX: -3, toX: 3, fromY: -1, toY: 1 },
+  { fromScale: 1.08, toScale: 1.16, fromX: 2, toX: 0, fromY: -2, toY: 2 },
+  { fromScale: 1.16, toScale: 1.08, fromX: 0, toX: -2, fromY: 2, toY: -2 },
+];
+
+function BeatSlide({ label, text, imageUrl, audioUrl, beatIndex }: EnrichedBeat & { beatIndex: number }) {
   const frame = useCurrentFrame();
   const { width, durationInFrames, fps } = useVideoConfig();
 
@@ -51,10 +63,30 @@ function BeatSlide({ label, text, imageUrl, audioUrl }: EnrichedBeat) {
   const opacity = Math.min(entrance, exitOpacity);
   const translateY = interpolate(entrance, [0, 1], [24, 0]);
 
+  const preset = KEN_BURNS_PRESETS[beatIndex % KEN_BURNS_PRESETS.length];
+  const panProgress = interpolate(frame, [0, durationInFrames - 1], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const scale = interpolate(panProgress, [0, 1], [preset.fromScale, preset.toScale]);
+  const panX = interpolate(panProgress, [0, 1], [preset.fromX, preset.toX]);
+  const panY = interpolate(panProgress, [0, 1], [preset.fromY, preset.toY]);
+
   return (
     <AbsoluteFill>
       {imageUrl && (
-        <Img src={imageUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <AbsoluteFill style={{ overflow: "hidden" }}>
+          <Img
+            src={imageUrl}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              transform: `scale(${scale}) translate(${panX}%, ${panY}%)`,
+              transformOrigin: "center center",
+            }}
+          />
+        </AbsoluteFill>
       )}
       {/* Scrim over the photo so the overlaid caption stays readable */}
       <AbsoluteFill
@@ -144,7 +176,7 @@ export function VideoTemplate({ beats }: { beats: EnrichedBeat[] }) {
         cursor += beat.durationInFrames;
         return (
           <Sequence key={i} from={from} durationInFrames={beat.durationInFrames} layout="none">
-            <BeatSlide {...beat} />
+            <BeatSlide {...beat} beatIndex={i} />
           </Sequence>
         );
       })}

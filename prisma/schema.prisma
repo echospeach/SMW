@@ -147,11 +147,19 @@ model AutomationFireLog {
 // monthly video allowance -- logged when a render job is accepted (i.e. real
 // OpenAI cost is about to be incurred), independent of whether the resulting
 // video is ever scheduled as a Post.
+//
+// contentHash + videoUrl double as a dedup cache: re-rendering the exact same
+// script+ratio (e.g. an accidental double-click of "Re-render") returns the
+// prior result for free instead of paying for a new image + narration set.
 model VideoRenderLog {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentHash String
+  jobId       String?
+  videoUrl    String?
+  createdAt   DateTime @default(now())
 
   @@index([userId, createdAt])
+  @@index([userId, contentHash])
 }

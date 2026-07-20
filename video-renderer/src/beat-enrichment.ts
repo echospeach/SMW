@@ -1,7 +1,7 @@
 import { parseBuffer } from "music-metadata";
 import { put } from "@vercel/blob";
 import { parseScriptIntoBeats, FPS } from "./remotion/parse-script";
-import { generateBeatImage, generateBeatAudio } from "./openai";
+import { generateHeroImage, generateBeatAudio } from "./openai";
 import type { EnrichedBeat, Ratio } from "./remotion/types";
 
 // Extra silence after narration ends before cutting to the next beat, so
@@ -16,34 +16,34 @@ export async function enrichScript(
 ): Promise<EnrichedBeat[]> {
   const rawBeats = parseScriptIntoBeats(script);
 
+  // One hero image for the whole video, themed on the full script -- reused
+  // across every beat (see VideoTemplate.tsx for the per-beat pan/zoom).
+  const heroPrompt = rawBeats.map((b) => b.text).join(" ");
+  const heroImageBuffer = await generateHeroImage(heroPrompt, ratio);
+  const heroImageBlob = await put(`videos/${jobId}/hero.png`, heroImageBuffer, {
+    access: "public",
+    contentType: "image/png",
+    addRandomSuffix: false,
+  });
+
   return Promise.all(
     rawBeats.map(async (beat, i) => {
-      const [imageBuffer, audioBuffer] = await Promise.all([
-        generateBeatImage(beat.text, ratio),
-        generateBeatAudio(beat.text),
-      ]);
+      const audioBuffer = await generateBeatAudio(beat.text);
 
       const metadata = await parseBuffer(new Uint8Array(audioBuffer), "audio/mpeg");
       const audioSeconds = metadata.format.duration ?? FALLBACK_AUDIO_SECONDS;
       const durationInFrames = Math.ceil((audioSeconds + AUDIO_PADDING_SECONDS) * FPS);
 
-      const [imageBlob, audioBlob] = await Promise.all([
-        put(`videos/${jobId}/beat-${i}.png`, imageBuffer, {
-          access: "public",
-          contentType: "image/png",
-          addRandomSuffix: false,
-        }),
-        put(`videos/${jobId}/beat-${i}.mp3`, audioBuffer, {
-          access: "public",
-          contentType: "audio/mpeg",
-          addRandomSuffix: false,
-        }),
-      ]);
+      const audioBlob = await put(`videos/${jobId}/beat-${i}.mp3`, audioBuffer, {
+        access: "public",
+        contentType: "audio/mpeg",
+        addRandomSuffix: false,
+      });
 
       return {
         label: beat.label,
         text: beat.text,
-        imageUrl: imageBlob.url,
+        imageUrl: heroImageBlob.url,
         audioUrl: audioBlob.url,
         durationInFrames,
       };

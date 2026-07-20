@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUserId } from "@/lib/api-auth";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   const userId = await requireUserId();
@@ -19,5 +20,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ job
   }
 
   const job = await res.json();
+
+  // Fill in the completed videoUrl so an identical future render can be
+  // served from cache instead of paying for a new one.
+  if (job.status === "done" && job.url) {
+    await prisma.videoRenderLog.updateMany({
+      where: { userId, jobId },
+      data: { videoUrl: job.url },
+    });
+  }
+
   return NextResponse.json(job);
 }

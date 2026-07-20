@@ -162,13 +162,19 @@ export function ContentStudio({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ script: draft, ratio }),
       });
+      const startData = await startRes.json().catch(() => null);
       if (!startRes.ok) {
-        const data = await startRes.json().catch(() => null);
-        setRenderError(data?.error ?? "Couldn't start the render. Try again.");
+        setRenderError(startData?.error ?? "Couldn't start the render. Try again.");
+        return;
+      }
+      // An identical prior render (e.g. re-rendering unchanged content) comes
+      // back instantly with no new AI cost and doesn't count against quota.
+      if (startData?.cached) {
+        setVideoUrl(startData.videoUrl);
         return;
       }
       setRendersUsed((n) => n + 1);
-      const { jobId } = await startRes.json();
+      const { jobId } = startData;
 
       // Each beat now generates an AI image + narration clip before rendering,
       // so a full render can take a couple of minutes -- give it real headroom.
