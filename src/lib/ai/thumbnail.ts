@@ -17,25 +17,16 @@ const DIMENSIONS_BY_RATIO: Record<Ratio, { width: number; height: number }> = {
 
 // No reference photo: straight text-to-image.
 async function generateFromPrompt(prompt: string, ratio: Ratio): Promise<Buffer> {
-  let response;
-  try {
-    response = await openai.images.generate({
-      model: "gpt-image-1.5",
-      prompt,
-      size: SIZE_BY_RATIO[ratio],
-      quality: "low",
-      n: 1,
-    });
-  } catch (err) {
-    throw new Error(`STAGE=openai-call ${err instanceof Error ? err.message : String(err)}`);
-  }
+  const response = await openai.images.generate({
+    model: "gpt-image-1.5",
+    prompt,
+    size: SIZE_BY_RATIO[ratio],
+    quality: "low",
+    n: 1,
+  });
   const b64 = response.data?.[0]?.b64_json;
   if (!b64) throw new Error("Image generation returned no data");
-  try {
-    return Buffer.from(b64, "base64");
-  } catch (err) {
-    throw new Error(`STAGE=b64-decode ${err instanceof Error ? err.message : String(err)}`);
-  }
+  return Buffer.from(b64, "base64");
 }
 
 // With a reference photo: image-editing so the result is based on the
@@ -126,22 +117,10 @@ async function compositeTextOverlay(
   const safeImage = toSafeBuffer(image);
   const safeOverlay = toSafeBuffer(Buffer.from(svg, "utf-8"));
 
-  try {
-    await sharp(safeImage).png().toBuffer();
-  } catch (err) {
-    throw new Error(
-      `STAGE=passthrough ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
-  try {
-    return await sharp(safeImage)
-      .composite([{ input: safeOverlay, top: 0, left: 0 }])
-      .png()
-      .toBuffer();
-  } catch (err) {
-    throw new Error(`STAGE=composite ${err instanceof Error ? err.message : String(err)}`);
-  }
+  return sharp(safeImage)
+    .composite([{ input: safeOverlay, top: 0, left: 0 }])
+    .png()
+    .toBuffer();
 }
 
 export async function generateThumbnail(

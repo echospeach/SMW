@@ -95,23 +95,15 @@ export async function POST(req: NextRequest) {
       overlayText,
     );
 
-    // sharp's output buffer has different underlying-memory characteristics
-    // than a plain Buffer.from(base64string) -- re-copy into a guaranteed
-    // plain buffer before it reaches @vercel/blob's upload, which has thrown
-    // "ArrayBuffer: SharedArrayBuffer is not allowed" on sharp's output
-    // specifically (Vercel's Node runtime).
+    // sharp's output buffer is backed by memory @vercel/blob's upload path
+    // rejects on Vercel's Node runtime -- re-copy into a plain buffer first.
     const safeBuffer = Buffer.from(Uint8Array.prototype.slice.call(imageBuffer));
 
-    let blob;
-    try {
-      blob = await put(`thumbnails/${userId}/${crypto.randomUUID()}.png`, safeBuffer, {
-        access: "public",
-        contentType: "image/png",
-        addRandomSuffix: false,
-      });
-    } catch (err) {
-      throw new Error(`STAGE=blob-put ${err instanceof Error ? err.message : String(err)}`);
-    }
+    const blob = await put(`thumbnails/${userId}/${crypto.randomUUID()}.png`, safeBuffer, {
+      access: "public",
+      contentType: "image/png",
+      addRandomSuffix: false,
+    });
 
     await prisma.videoRenderLog.create({
       data: { userId, contentHash, videoUrl: blob.url },
