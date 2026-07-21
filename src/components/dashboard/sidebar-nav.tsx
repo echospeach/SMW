@@ -2,12 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, CreditCard, LayoutDashboard, PenSquare, Users, Zap } from "lucide-react";
+import {
+  CalendarDays,
+  CreditCard,
+  Image as ImageIcon,
+  LayoutDashboard,
+  PenSquare,
+  Users,
+  Zap,
+} from "lucide-react";
 import { C } from "@/lib/theme";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/studio", label: "Content Studio", icon: PenSquare },
+  { href: "/thumbnails", label: "Thumbnails", icon: ImageIcon },
   { href: "/automation", label: "Automation", icon: Zap },
   { href: "/accounts", label: "Accounts", icon: Users },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
