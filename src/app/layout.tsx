@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "SMW",
   description: "AI-powered social media scheduling and automation.",
   other: {
-    "tiktok-developers-site-verification": "TVL2UKNifVxiRn1qqvdjPzXiElVsUO86",
+    "tiktok-developers-site-verification": "d1E7UaCNnZ4p1KDLPp1oTkXz8OEY2M6D",
   },
 };
 
