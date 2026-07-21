@@ -117,10 +117,22 @@ async function compositeTextOverlay(
   const safeImage = toSafeBuffer(image);
   const safeOverlay = toSafeBuffer(Buffer.from(svg, "utf-8"));
 
-  return sharp(safeImage)
-    .composite([{ input: safeOverlay, top: 0, left: 0 }])
-    .png()
-    .toBuffer();
+  try {
+    await sharp(safeImage).png().toBuffer();
+  } catch (err) {
+    throw new Error(
+      `STAGE=passthrough ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  try {
+    return await sharp(safeImage)
+      .composite([{ input: safeOverlay, top: 0, left: 0 }])
+      .png()
+      .toBuffer();
+  } catch (err) {
+    throw new Error(`STAGE=composite ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 export async function generateThumbnail(
