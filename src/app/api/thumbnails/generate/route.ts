@@ -107,6 +107,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: blob.url });
   } catch (err) {
+    console.error("Thumbnail generation failed:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Thumbnail generation failed" },
       { status: 502 },

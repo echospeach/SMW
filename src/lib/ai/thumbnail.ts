@@ -45,6 +45,15 @@ async function editFromPhoto(prompt: string, ratio: Ratio, photo: Buffer, photoT
   return Buffer.from(b64, "base64");
 }
 
+// Vercel's Node runtime has thrown "ArrayBuffer: SharedArrayBuffer is not
+// allowed" from sharp's native binding when handed a Buffer backed by a
+// pooled/shared allocation (e.g. straight out of Buffer.from(base64,
+// "base64")) -- force a genuinely fresh, non-pooled copy before it ever
+// reaches sharp.
+function toSafeBuffer(buf: Buffer): Buffer {
+  return Buffer.from(Uint8Array.prototype.slice.call(buf));
+}
+
 function escapeXml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -105,8 +114,11 @@ async function compositeTextOverlay(
     </text>
   </svg>`;
 
-  return sharp(image)
-    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
+  const safeImage = toSafeBuffer(image);
+  const safeOverlay = toSafeBuffer(Buffer.from(svg, "utf-8"));
+
+  return sharp(safeImage)
+    .composite([{ input: safeOverlay, top: 0, left: 0 }])
     .png()
     .toBuffer();
 }
