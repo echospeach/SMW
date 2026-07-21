@@ -8,9 +8,16 @@ import { PlatformBadge } from "@/components/ui/platform-badge";
 
 export type ConnectionState = Record<PlatformId, { connected: boolean; handle: string | null }>;
 
+// Only platforms with a real, fully working integration are shown as
+// connectable — everything else renders "Coming soon" instead of a mock or
+// partially-blocked connect flow. TikTok's OAuth + connector are built and
+// stay in the codebase, just hidden from the UI until its domain
+// verification (needs a custom domain) is sorted out.
+const AVAILABLE_PLATFORMS: PlatformId[] = ["FACEBOOK"];
+
 // These connect via a real OAuth round trip (see src/app/api/accounts/<platform>/authorize)
 // instead of the generic mock POST -- everything else still uses toggle().
-const OAUTH_PLATFORMS: PlatformId[] = ["FACEBOOK", "TIKTOK"];
+const OAUTH_PLATFORMS: PlatformId[] = ["FACEBOOK"];
 
 export function AccountsView({ initial }: { initial: ConnectionState }) {
   const [connections, setConnections] = useState(initial);
@@ -42,11 +49,12 @@ export function AccountsView({ initial }: { initial: ConnectionState }) {
       {PLATFORMS.map((p) => {
         const state = connections[p.id];
         const busy = isPending && pendingPlatform === p.id;
+        const available = AVAILABLE_PLATFORMS.includes(p.id);
         return (
           <div
             key={p.id}
             className="flex items-center gap-3 rounded-xl p-3.5"
-            style={{ background: C.panel, border: `1px solid ${C.line}` }}
+            style={{ background: C.panel, border: `1px solid ${C.line}`, opacity: available ? 1 : 0.6 }}
           >
             <PlatformBadge id={p.id} size={18} />
             <div className="flex-1">
@@ -54,10 +62,17 @@ export function AccountsView({ initial }: { initial: ConnectionState }) {
                 {p.name}
               </div>
               <div className="font-mono text-[11px]" style={{ color: C.muted }}>
-                {state.connected ? state.handle : "Not connected"}
+                {!available ? "Coming soon" : state.connected ? state.handle : "Not connected"}
               </div>
             </div>
-            {!state.connected && OAUTH_PLATFORMS.includes(p.id) ? (
+            {!available ? (
+              <span
+                className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                style={{ border: `1px solid ${C.line}`, color: C.muted }}
+              >
+                Coming soon
+              </span>
+            ) : !state.connected && OAUTH_PLATFORMS.includes(p.id) ? (
               <a
                 href={`/api/accounts/${p.id.toLowerCase()}/authorize`}
                 className="rounded-lg px-3 py-1.5 text-xs font-medium"
