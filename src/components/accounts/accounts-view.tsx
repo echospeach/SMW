@@ -8,6 +8,10 @@ import { PlatformBadge } from "@/components/ui/platform-badge";
 
 export type ConnectionState = Record<PlatformId, { connected: boolean; handle: string | null }>;
 
+// These connect via a real OAuth round trip (see src/app/api/accounts/<platform>/authorize)
+// instead of the generic mock POST -- everything else still uses toggle().
+const OAUTH_PLATFORMS: PlatformId[] = ["FACEBOOK"];
+
 export function AccountsView({ initial }: { initial: ConnectionState }) {
   const [connections, setConnections] = useState(initial);
   const [pendingPlatform, setPendingPlatform] = useState<PlatformId | null>(null);
@@ -53,18 +57,28 @@ export function AccountsView({ initial }: { initial: ConnectionState }) {
                 {state.connected ? state.handle : "Not connected"}
               </div>
             </div>
-            <button
-              onClick={() => toggle(p.id)}
-              disabled={busy}
-              className="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-40"
-              style={{
-                background: state.connected ? "transparent" : C.amber,
-                color: state.connected ? C.red : C.ink,
-                border: `1px solid ${state.connected ? C.red : C.amber}`,
-              }}
-            >
-              {busy ? "…" : state.connected ? "Disconnect" : "Connect"}
-            </button>
+            {!state.connected && OAUTH_PLATFORMS.includes(p.id) ? (
+              <a
+                href={`/api/accounts/${p.id.toLowerCase()}/authorize`}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                style={{ background: C.amber, color: C.ink, border: `1px solid ${C.amber}` }}
+              >
+                Connect
+              </a>
+            ) : (
+              <button
+                onClick={() => toggle(p.id)}
+                disabled={busy}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+                style={{
+                  background: state.connected ? "transparent" : C.amber,
+                  color: state.connected ? C.red : C.ink,
+                  border: `1px solid ${state.connected ? C.red : C.amber}`,
+                }}
+              >
+                {busy ? "…" : state.connected ? "Disconnect" : "Connect"}
+              </button>
+            )}
           </div>
         );
       })}

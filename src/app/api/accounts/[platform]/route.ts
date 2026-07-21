@@ -17,7 +17,15 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
   }
   const platformId = parsed.data;
 
-  const { handle } = await getConnector(platformId).connect(userId);
+  let handle: string;
+  try {
+    ({ handle } = await getConnector(platformId).connect(userId));
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to connect" },
+      { status: 400 },
+    );
+  }
 
   const connection = await prisma.socialConnection.upsert({
     where: { userId_platformId: { userId, platformId } },

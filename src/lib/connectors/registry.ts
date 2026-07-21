@@ -1,12 +1,14 @@
 import { PlatformId } from "@/generated/prisma/enums";
 import { MockConnector } from "./mock";
+import { MetaGraphConnector } from "./meta-connector";
 import type { PlatformConnector } from "./types";
 
-// Every entry is mocked today. A real integration (Meta Graph API, X API, ...)
-// drops in later by implementing PlatformConnector and swapping the entry here —
-// nothing upstream (scheduling engine, API routes, UI) calls a connector class directly.
+// Real integrations drop in one at a time by implementing PlatformConnector
+// and swapping the entry here — nothing upstream (scheduling engine, API
+// routes, UI) calls a connector class directly. Facebook is real (Meta Graph
+// API); the rest are still mocked pending their own OAuth apps.
 const registry: Record<PlatformId, PlatformConnector> = {
-  FACEBOOK: new MockConnector(PlatformId.FACEBOOK),
+  FACEBOOK: new MetaGraphConnector(),
   INSTAGRAM: new MockConnector(PlatformId.INSTAGRAM),
   X: new MockConnector(PlatformId.X),
   LINKEDIN: new MockConnector(PlatformId.LINKEDIN),
