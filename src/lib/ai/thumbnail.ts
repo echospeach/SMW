@@ -17,16 +17,25 @@ const DIMENSIONS_BY_RATIO: Record<Ratio, { width: number; height: number }> = {
 
 // No reference photo: straight text-to-image.
 async function generateFromPrompt(prompt: string, ratio: Ratio): Promise<Buffer> {
-  const response = await openai.images.generate({
-    model: "gpt-image-1.5",
-    prompt,
-    size: SIZE_BY_RATIO[ratio],
-    quality: "low",
-    n: 1,
-  });
+  let response;
+  try {
+    response = await openai.images.generate({
+      model: "gpt-image-1.5",
+      prompt,
+      size: SIZE_BY_RATIO[ratio],
+      quality: "low",
+      n: 1,
+    });
+  } catch (err) {
+    throw new Error(`STAGE=openai-call ${err instanceof Error ? err.message : String(err)}`);
+  }
   const b64 = response.data?.[0]?.b64_json;
   if (!b64) throw new Error("Image generation returned no data");
-  return Buffer.from(b64, "base64");
+  try {
+    return Buffer.from(b64, "base64");
+  } catch (err) {
+    throw new Error(`STAGE=b64-decode ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 // With a reference photo: image-editing so the result is based on the
