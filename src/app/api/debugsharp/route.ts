@@ -43,5 +43,13 @@ export async function GET() {
     sample(arialText, [[20, 80], [100, 100]]),
   ]);
 
-  return NextResponse.json({ versions: sharp.versions, solid, gradient, plain, arial });
+  return NextResponse.json({
+    arch: process.arch,
+    platform: process.platform,
+    versions: sharp.versions,
+    solid,
+    gradient,
+    plain,
+    arial,
+  });
 }
