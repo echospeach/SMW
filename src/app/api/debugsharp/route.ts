@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
+import fs from "node:fs";
+import path from "node:path";
 
 // Temporary: diagnose whether production's sharp build (resvg-based wasm
 // build) supports SVG gradients / text the way the thumbnail overlay needs.
@@ -43,10 +45,36 @@ export async function GET() {
     sample(arialText, [[20, 80], [100, 100]]),
   ]);
 
+  let nativeResolve: string | null = null;
+  let nativeResolveError: string | null = null;
+  try {
+    nativeResolve = require.resolve("@img/sharp-linux-x64/lib/sharp-linux-x64.node");
+  } catch (err) {
+    nativeResolveError = err instanceof Error ? err.message : String(err);
+  }
+
+  let sharpModuleDir: string | null = null;
+  try {
+    sharpModuleDir = path.dirname(require.resolve("sharp/package.json"));
+  } catch {}
+  const imgDirListing = sharpModuleDir
+    ? (() => {
+        try {
+          return fs.readdirSync(path.join(sharpModuleDir!, "..", "@img"));
+        } catch (err) {
+          return `readdir failed: ${err instanceof Error ? err.message : String(err)}`;
+        }
+      })()
+    : null;
+
   return NextResponse.json({
     arch: process.arch,
     platform: process.platform,
     versions: sharp.versions,
+    nativeResolve,
+    nativeResolveError,
+    sharpModuleDir,
+    imgDirListing,
     solid,
     gradient,
     plain,
