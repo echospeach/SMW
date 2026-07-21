@@ -10,8 +10,13 @@ import { generateThumbnail } from "@/lib/ai/thumbnail";
 
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 
-function hashContent(prompt: string, ratio: string, photoBuffer: Buffer | null): string {
-  const hash = createHash("sha256").update(`${ratio}\n${prompt}`);
+function hashContent(
+  prompt: string,
+  ratio: string,
+  overlayText: string,
+  photoBuffer: Buffer | null,
+): string {
+  const hash = createHash("sha256").update(`${ratio}\n${prompt}\n${overlayText}`);
   if (photoBuffer) hash.update(photoBuffer);
   return hash.digest("hex");
 }
@@ -39,6 +44,7 @@ export async function POST(req: NextRequest) {
   const parsed = ThumbnailGenerateSchema.safeParse({
     prompt: form.get("prompt"),
     ratio: form.get("ratio") ?? undefined,
+    overlayText: form.get("overlayText") || undefined,
   });
   if (!parsed.success) {
     return NextResponse.json(
@@ -46,7 +52,7 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const { prompt, ratio } = parsed.data;
+  const { prompt, ratio, overlayText } = parsed.data;
 
   const photoFile = form.get("photo");
   let photoBuffer: Buffer | null = null;
@@ -59,7 +65,7 @@ export async function POST(req: NextRequest) {
     photoType = photoFile.type || "image/png";
   }
 
-  const contentHash = hashContent(prompt, ratio, photoBuffer);
+  const contentHash = hashContent(prompt, ratio, overlayText ?? "", photoBuffer);
   const cached = await prisma.videoRenderLog.findFirst({
     where: { userId, contentHash, videoUrl: { not: null } },
     orderBy: { createdAt: "desc" },
@@ -86,6 +92,7 @@ export async function POST(req: NextRequest) {
       prompt,
       ratio,
       photoBuffer ? { buffer: photoBuffer, type: photoType } : undefined,
+      overlayText,
     );
 
     const blob = await put(`thumbnails/${userId}/${crypto.randomUUID()}.png`, imageBuffer, {

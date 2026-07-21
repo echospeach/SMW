@@ -13,6 +13,7 @@ export function ThumbnailStudio({ plan, used, limit }: { plan: Plan; used: numbe
   const capReached = generationsUsed >= limit;
 
   const [prompt, setPrompt] = useState("");
+  const [overlayText, setOverlayText] = useState("");
   const [ratio, setRatio] = useState<Ratio>("SQUARE");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -40,6 +41,7 @@ export function ThumbnailStudio({ plan, used, limit }: { plan: Plan; used: numbe
       const form = new FormData();
       form.set("prompt", prompt);
       form.set("ratio", ratio);
+      if (overlayText.trim()) form.set("overlayText", overlayText.trim());
       if (photo) form.set("photo", photo);
 
       const res = await fetch("/api/thumbnails/generate", { method: "POST", body: form });
@@ -79,6 +81,23 @@ export function ThumbnailStudio({ plan, used, limit }: { plan: Plan; used: numbe
             className="mt-1 w-full resize-none rounded-lg px-3 py-2 text-sm outline-none placeholder:opacity-50"
             style={{ background: C.raised, color: C.paper, border: `1px solid ${C.line}` }}
           />
+        </div>
+
+        <div>
+          <label className="text-xs" style={{ color: C.muted }}>
+            Text on thumbnail (optional)
+          </label>
+          <input
+            value={overlayText}
+            onChange={(e) => setOverlayText(e.target.value)}
+            placeholder="e.g. 50% OFF THIS WEEK"
+            maxLength={200}
+            className="mt-1 w-full rounded-lg px-3 py-2 text-sm outline-none placeholder:opacity-50"
+            style={{ background: C.raised, color: C.paper, border: `1px solid ${C.line}` }}
+          />
+          <p className="mt-1.5 text-[11px]" style={{ color: C.muted }}>
+            Composited on top as real, crisp text — not left to the AI to render.
+          </p>
         </div>
 
         <div>
