@@ -78,11 +78,13 @@ model SocialConnection {
   platformId  PlatformId
   connected   Boolean    @default(false)
   handle      String?
-  // Real OAuth connectors (Meta, ...) populate these; the access token is
+  // Real OAuth connectors (Meta, TikTok, ...) populate these; tokens are
   // never sent to the client, only used server-side by the connector.
-  accessToken String?
-  externalId  String?
-  connectedAt DateTime?
+  accessToken    String?
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+  externalId     String?
+  connectedAt    DateTime?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 

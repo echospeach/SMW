@@ -16,10 +16,17 @@ const FACEBOOK_STATUS_MESSAGE: Record<string, { text: string; isError: boolean }
   error: { text: "Facebook connection failed. Try again.", isError: true },
 };
 
+const TIKTOK_STATUS_MESSAGE: Record<string, { text: string; isError: boolean }> = {
+  connected: { text: "TikTok account connected.", isError: false },
+  denied: { text: "TikTok connection was cancelled.", isError: true },
+  invalid_state: { text: "TikTok connection expired — try again.", isError: true },
+  error: { text: "TikTok connection failed. Try again.", isError: true },
+};
+
 export default async function AccountsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ facebook?: string }>;
+  searchParams: Promise<{ facebook?: string; tiktok?: string }>;
 }) {
   const userId = await requireUserId();
   if (!userId) redirect("/login");
@@ -32,8 +39,12 @@ export default async function AccountsPage({
     }),
   ) as ConnectionState;
 
-  const { facebook } = await searchParams;
-  const status = facebook ? FACEBOOK_STATUS_MESSAGE[facebook] : undefined;
+  const { facebook, tiktok } = await searchParams;
+  const status = facebook
+    ? FACEBOOK_STATUS_MESSAGE[facebook]
+    : tiktok
+      ? TIKTOK_STATUS_MESSAGE[tiktok]
+      : undefined;
 
   return (
     <div>

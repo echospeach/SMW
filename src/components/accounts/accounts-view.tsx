@@ -10,7 +10,7 @@ export type ConnectionState = Record<PlatformId, { connected: boolean; handle: s
 
 // These connect via a real OAuth round trip (see src/app/api/accounts/<platform>/authorize)
 // instead of the generic mock POST -- everything else still uses toggle().
-const OAUTH_PLATFORMS: PlatformId[] = ["FACEBOOK"];
+const OAUTH_PLATFORMS: PlatformId[] = ["FACEBOOK", "TIKTOK"];
 
 export function AccountsView({ initial }: { initial: ConnectionState }) {
   const [connections, setConnections] = useState(initial);
