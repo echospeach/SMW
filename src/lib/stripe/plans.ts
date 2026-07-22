@@ -14,6 +14,12 @@ export function priceLookupKey(plan: Plan, cycle: BillingCycle): string {
   return `smw_${plan.toLowerCase()}_${cycle}`;
 }
 
+// One-time (not recurring) credit top-up product -- a single fixed SKU, no
+// plan/cycle dimension, so a flat constant is simpler than overloading
+// priceLookupKey()'s signature for it.
+export const CREDIT_TOPUP_PRODUCT_ID = "smw_credit_topup_10";
+export const CREDIT_TOPUP_PRICE_LOOKUP_KEY = "smw_credit_topup_10_usd";
+
 const PRODUCT_TO_PLAN: Record<string, Plan> = Object.fromEntries(
   Object.entries(STRIPE_PRODUCT_ID).map(([plan, productId]) => [productId, plan as Plan]),
 );

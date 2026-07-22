@@ -47,9 +47,14 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="text-xs" style={{ color: C.muted }}>
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs" style={{ color: C.muted }}>
+                Password
+              </label>
+              <Link href="/forgot-password" className="text-xs underline" style={{ color: C.muted }}>
+                Forgot password?
+              </Link>
+            </div>
             <input
               name="password"
               type="password"

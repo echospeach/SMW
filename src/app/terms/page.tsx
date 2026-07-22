@@ -1,3 +1,4 @@
+import { C, SUPPORT_EMAIL } from "@/lib/theme";
 import { LegalList, LegalPage, LegalSection } from "@/components/legal/legal-page";
 
 export const metadata = { title: "Terms of Service — SMW" };
@@ -112,7 +113,13 @@ export default function TermsPage() {
       </LegalSection>
 
       <LegalSection heading="Contact">
-        <p>Questions about these Terms can be sent to [contact email].</p>
+        <p>
+          Questions about these Terms can be sent to{" "}
+          <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: C.amber }}>
+            {SUPPORT_EMAIL}
+          </a>
+          .
+        </p>
       </LegalSection>
     </LegalPage>
   );

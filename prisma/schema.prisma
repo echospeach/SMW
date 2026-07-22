@@ -75,6 +75,37 @@ model User {
   posts           Post[]
   videoRenderLogs VideoRenderLog[]
   referralCredits ReferralCredit[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+// Single-use, expiring token for the forgot-password flow. The raw token is
+// only ever emailed once -- only its hash is stored, so a leaked DB dump
+// can't be used to reset anyone's password.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Append-only attempt log for rate-limiting login/register/reset-request,
+// mirroring VideoRenderLog/AutomationFireLog's idiom of a small purpose-built
+// Postgres table instead of introducing Redis for this.
+model AuthAttempt {
+  id        String   @id @default(cuid())
+  kind      String
+  ip        String
+  email     String?
+  succeeded Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([ip, kind, createdAt])
+  @@index([email, kind, createdAt])
 }
 
 // Append-only bonus-generation ledger, mirrors VideoRenderLog's role as the

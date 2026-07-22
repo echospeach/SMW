@@ -3,9 +3,20 @@ import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe/client";
 import { planFromSubscription } from "@/lib/stripe/plans";
+import { grantPaidCredits, PAID_TOPUP_GENERATIONS } from "@/lib/referral";
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const userId = session.client_reference_id ?? session.metadata?.userId;
+
+  // One-time credit top-up: a plain payment session, no subscription at all
+  // -- branch before the subscription-only extraction below, which would
+  // otherwise no-op (harmlessly, but confusingly) for this session type.
+  if (session.metadata?.type === "credit_topup") {
+    if (!userId) return;
+    await grantPaidCredits(userId, PAID_TOPUP_GENERATIONS);
+    return;
+  }
+
   const subscriptionId =
     typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
   const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;

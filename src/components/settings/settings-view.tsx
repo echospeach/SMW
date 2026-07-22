@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bell, Check, Feather, ToggleLeft, ToggleRight } from "lucide-react";
-import { C } from "@/lib/theme";
+import { Bell, Check, Feather, LifeBuoy, ToggleLeft, ToggleRight } from "lucide-react";
+import { C, SUPPORT_EMAIL } from "@/lib/theme";
 
 type NotificationSettings = {
   notifyOnPublish: boolean;
@@ -174,6 +174,24 @@ export function SettingsView({
             {voiceSaved ? <Check size={13} /> : null}
             {savingVoice ? "Saving…" : voiceSaved ? "Saved" : "Save brand voice"}
           </button>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="flex items-center gap-1.5 font-mono text-xs tracking-[0.15em] uppercase" style={{ color: C.muted }}>
+          <LifeBuoy size={12} /> Support
+        </h2>
+        <div className="mt-3 rounded-xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
+          <p className="text-sm" style={{ color: C.paper }}>
+            Questions or issues? We&apos;re happy to help.
+          </p>
+          <a
+            href={`mailto:${SUPPORT_EMAIL}`}
+            className="mt-1 inline-block text-sm underline"
+            style={{ color: C.amber }}
+          >
+            {SUPPORT_EMAIL}
+          </a>
         </div>
       </div>
     </div>

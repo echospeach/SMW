@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Check, CreditCard, Star } from "lucide-react";
 import { priceFor, type BillingCycle } from "@/lib/billing";
 import { C, PLANS } from "@/lib/theme";
+import { CreditTopupCard } from "./credit-topup-card";
 
 type Plan = (typeof PLANS)[number];
 type Cycle = BillingCycle;
@@ -192,6 +193,8 @@ export function BillingView({
           );
         })}
       </div>
+
+      <CreditTopupCard />
 
       <div className="text-center text-[11px]" style={{ color: C.muted }}>
         Payments and subscriptions are handled by Stripe (test mode).

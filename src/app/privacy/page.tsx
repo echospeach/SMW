@@ -1,4 +1,4 @@
-import { C } from "@/lib/theme";
+import { C, SUPPORT_EMAIL } from "@/lib/theme";
 import { LegalList, LegalPage, LegalSection } from "@/components/legal/legal-page";
 
 export const metadata = { title: "Privacy Policy — SMW" };
@@ -115,7 +115,13 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection heading="Contact">
-        <p>Questions about this policy can be sent to [contact email].</p>
+        <p>
+          Questions about this policy can be sent to{" "}
+          <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: C.amber }}>
+            {SUPPORT_EMAIL}
+          </a>
+          .
+        </p>
       </LegalSection>
     </LegalPage>
   );

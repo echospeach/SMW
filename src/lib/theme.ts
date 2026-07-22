@@ -1,5 +1,7 @@
 import { ContentType, PlatformId, Ratio } from "@/generated/prisma/enums";
 
+export const SUPPORT_EMAIL = "echospeach@gmail.com";
+
 // Design system colors, ported verbatim from the original prototype (smw-dashboard.jsx).
 export const C = {
   ink: "#12151C",

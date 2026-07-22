@@ -3,7 +3,12 @@
 // Run with: npx tsx scripts/setup-stripe.ts
 import "dotenv/config";
 import { stripe } from "../src/lib/stripe/client";
-import { STRIPE_PRODUCT_ID, priceLookupKey } from "../src/lib/stripe/plans";
+import {
+  CREDIT_TOPUP_PRICE_LOOKUP_KEY,
+  CREDIT_TOPUP_PRODUCT_ID,
+  STRIPE_PRODUCT_ID,
+  priceLookupKey,
+} from "../src/lib/stripe/plans";
 import { PLANS } from "../src/lib/theme";
 import type Stripe from "stripe";
 
@@ -47,6 +52,26 @@ async function ensurePrice(
   return price;
 }
 
+async function ensureOneTimePrice(
+  productId: string,
+  lookupKey: string,
+  unitAmount: number,
+): Promise<Stripe.Price> {
+  const existing = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1 });
+  if (existing.data[0]) {
+    console.log(`Price ${lookupKey} already exists`);
+    return existing.data[0];
+  }
+  const price = await stripe.prices.create({
+    product: productId,
+    currency: "usd",
+    unit_amount: unitAmount,
+    lookup_key: lookupKey,
+  });
+  console.log(`Created one-time price ${lookupKey} (${unitAmount / 100})`);
+  return price;
+}
+
 async function main() {
   const priceIdsByProduct: Record<string, string[]> = {};
 
@@ -67,6 +92,9 @@ async function main() {
     );
     priceIdsByProduct[product.id] = [monthly.id, yearly.id];
   }
+
+  const topupProduct = await ensureProduct(CREDIT_TOPUP_PRODUCT_ID, "10 AI Generations (one-time)");
+  await ensureOneTimePrice(topupProduct.id, CREDIT_TOPUP_PRICE_LOOKUP_KEY, 500);
 
   const configuration = await stripe.billingPortal.configurations.create({
     business_profile: { headline: "Manage your SMW subscription" },

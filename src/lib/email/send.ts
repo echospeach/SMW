@@ -1,7 +1,12 @@
 import type { PlatformId } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { getResendClient } from "./resend-client";
-import { postFailedTemplate, postPublishedTemplate, weeklyRecapTemplate } from "./templates";
+import {
+  passwordResetTemplate,
+  postFailedTemplate,
+  postPublishedTemplate,
+  weeklyRecapTemplate,
+} from "./templates";
 
 const FROM = process.env.RESEND_FROM ?? "SMW <notifications@smw.app>";
 
@@ -36,6 +41,13 @@ export async function sendPostFailedEmail(
   const user = await getRecipient(userId);
   if (!user || user.settings?.notifyOnFailure === false) return;
   await send(user.email, postFailedTemplate(platformId, text, reason));
+}
+
+// Takes the email/URL directly rather than a userId -- the caller already
+// decides whether to send at all (it deliberately doesn't reveal whether the
+// account exists), so this stays a dumb, unconditional send like the others.
+export async function sendPasswordResetEmail(email: string, resetUrl: string) {
+  await send(email, passwordResetTemplate(resetUrl));
 }
 
 export async function sendWeeklyRecapEmail(

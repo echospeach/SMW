@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { signIn, signOut } from "@/lib/auth";
 import { RegisterSchema } from "@/lib/validation/auth";
 import { grantReferralBonuses } from "@/lib/referral";
+import { checkAuthRateLimit, recordAuthAttempt } from "@/lib/rate-limit";
 
 export type AuthFormState = { error?: string } | undefined;
 
@@ -34,6 +35,12 @@ export async function register(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
   const { email, password, ref } = parsed.data;
+
+  const { allowed } = await checkAuthRateLimit("register", email);
+  if (!allowed) {
+    return { error: "Too many attempts. Try again in a few minutes." };
+  }
+  await recordAuthAttempt("register", false, email);
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -72,9 +79,22 @@ export async function register(
 }
 
 export async function login(_prevState: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  const email = formData.get("email");
+  const emailStr = typeof email === "string" ? email : undefined;
+
+  const { allowed } = await checkAuthRateLimit("login", emailStr);
+  if (!allowed) {
+    return { error: "Too many attempts. Try again in a few minutes." };
+  }
+  // Recorded before the outcome is known -- signIn() redirects via a thrown
+  // NEXT_REDIRECT on success, so there's no code path after it on success to
+  // record from. The rate-limit check above only cares about attempt
+  // frequency, not the eventual outcome, so this is recorded unconditionally.
+  await recordAuthAttempt("login", false, emailStr);
+
   try {
     await signIn("credentials", {
-      email: formData.get("email"),
+      email,
       password: formData.get("password"),
       redirectTo: "/dashboard",
     });

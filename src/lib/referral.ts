@@ -32,3 +32,14 @@ export async function grantReferralBonuses(referrerUserId: string, newUserId: st
     ],
   });
 }
+
+export const PAID_TOPUP_GENERATIONS = 10;
+
+// Grants into the same ledger as referral bonuses -- automatically picked
+// up by getAvailableBonusCredits()/consumeBonusCredit() with no changes
+// needed in any of the three quota-gated generation routes.
+export async function grantPaidCredits(userId: string, amount: number): Promise<void> {
+  await prisma.referralCredit.create({
+    data: { userId, amount, reason: "paid_topup" },
+  });
+}

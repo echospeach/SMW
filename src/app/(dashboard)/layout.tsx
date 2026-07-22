@@ -1,10 +1,10 @@
-import { AlertTriangle, LogOut } from "lucide-react";
+import { AlertTriangle, LifeBuoy, LogOut } from "lucide-react";
 import { logout } from "@/lib/actions/auth";
 import { requireUserId } from "@/lib/api-auth";
 import { auth } from "@/lib/auth";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { prisma } from "@/lib/prisma";
-import { C } from "@/lib/theme";
+import { C, SUPPORT_EMAIL } from "@/lib/theme";
 import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -54,6 +54,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
         >
           {session?.user?.email}
         </div>
+        <a
+          href={`mailto:${SUPPORT_EMAIL}`}
+          className="flex items-center gap-2 px-3 py-1.5 text-[11px]"
+          style={{ color: C.muted }}
+        >
+          <LifeBuoy size={12} />
+          Support
+        </a>
         <form action={logout}>
           <button
             type="submit"
