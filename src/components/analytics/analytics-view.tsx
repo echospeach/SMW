@@ -40,7 +40,7 @@ export function AnalyticsView({ posts }: { posts: AnalyticsPost[] }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
         <StatCard eyebrow="Published" value={posts.length} sub="Total posts" />
         <StatCard eyebrow="Impressions" value={sum(withMetrics, "impressions")} sub="Tracked posts" />
         <StatCard eyebrow="Likes" value={sum(withMetrics, "likes")} sub="Tracked posts" />
@@ -68,7 +68,7 @@ export function AnalyticsView({ posts }: { posts: AnalyticsPost[] }) {
           return (
             <div
               key={post.id}
-              className="flex items-center gap-3 rounded-lg px-3 py-3"
+              className="flex flex-wrap items-center gap-3 rounded-lg px-3 py-3"
               style={{ background: C.panel, border: `1px dashed ${C.line}` }}
             >
               <PlatformBadge id={post.platformId} />
@@ -81,7 +81,7 @@ export function AnalyticsView({ posts }: { posts: AnalyticsPost[] }) {
                   style={{ border: `1px solid ${C.line}` }}
                 />
               )}
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-full sm:basis-auto">
                 <p className="truncate text-sm" style={{ color: C.paper }}>
                   {post.text}
                 </p>

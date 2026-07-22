@@ -3,6 +3,7 @@ import { logout } from "@/lib/actions/auth";
 import { requireUserId } from "@/lib/api-auth";
 import { auth } from "@/lib/auth";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { LogoMark } from "@/components/ui/logo-mark";
 import { prisma } from "@/lib/prisma";
 import { C, SUPPORT_EMAIL } from "@/lib/theme";
@@ -18,59 +19,58 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ]);
 
   return (
-    <div className="flex min-h-screen w-full font-sans" style={{ background: C.ink }}>
-      <aside
-        className="flex w-56 shrink-0 flex-col gap-1 p-4"
-        style={{ borderRight: `1px solid ${C.line}` }}
-      >
-        <div className="mb-2 flex items-center gap-2 px-2 py-3">
-          <LogoMark />
-          <span className="text-sm font-bold tracking-widest" style={{ color: C.paper }}>
-            SMW
-          </span>
-        </div>
+    <DashboardShell
+      sidebar={
+        <>
+          <div className="mb-2 hidden items-center gap-2 px-2 py-3 md:flex">
+            <LogoMark />
+            <span className="text-sm font-bold tracking-widest" style={{ color: C.paper }}>
+              SMW
+            </span>
+          </div>
 
-        <SidebarNav />
+          <SidebarNav />
 
-        <div className="flex-1" />
+          <div className="flex-1" />
 
-        {draftCount > 0 && (
+          {draftCount > 0 && (
+            <div
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-[11px]"
+              style={{ background: C.raised, color: C.muted }}
+            >
+              <AlertTriangle size={13} color={C.amber} />
+              {draftCount} draft{draftCount !== 1 ? "s" : ""} need review
+            </div>
+          )}
+
           <div
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-[11px]"
+            className="rounded-lg px-3 py-2 text-[11px]"
             style={{ background: C.raised, color: C.muted }}
           >
-            <AlertTriangle size={13} color={C.amber} />
-            {draftCount} draft{draftCount !== 1 ? "s" : ""} need review
+            {session?.user?.email}
           </div>
-        )}
-
-        <div
-          className="rounded-lg px-3 py-2 text-[11px]"
-          style={{ background: C.raised, color: C.muted }}
-        >
-          {session?.user?.email}
-        </div>
-        <a
-          href={`mailto:${SUPPORT_EMAIL}`}
-          className="flex items-center gap-2 px-3 py-1.5 text-[11px]"
-          style={{ color: C.muted }}
-        >
-          <LifeBuoy size={12} />
-          Support
-        </a>
-        <form action={logout}>
-          <button
-            type="submit"
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium"
+          <a
+            href={`mailto:${SUPPORT_EMAIL}`}
+            className="flex items-center gap-2 px-3 py-1.5 text-[11px]"
             style={{ color: C.muted }}
           >
-            <LogOut size={17} strokeWidth={2} />
-            Log out
-          </button>
-        </form>
-      </aside>
-
-      <main className="max-w-4xl flex-1 p-6">{children}</main>
-    </div>
+            <LifeBuoy size={12} />
+            Support
+          </a>
+          <form action={logout}>
+            <button
+              type="submit"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium"
+              style={{ color: C.muted }}
+            >
+              <LogOut size={17} strokeWidth={2} />
+              Log out
+            </button>
+          </form>
+        </>
+      }
+    >
+      {children}
+    </DashboardShell>
   );
 }

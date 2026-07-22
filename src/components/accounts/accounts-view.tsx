@@ -57,11 +57,11 @@ export function AccountsView({ initial }: { initial: ConnectionState }) {
             style={{ background: C.panel, border: `1px solid ${C.line}`, opacity: available ? 1 : 0.6 }}
           >
             <PlatformBadge id={p.id} size={18} />
-            <div className="flex-1">
-              <div className="text-sm font-medium" style={{ color: C.paper }}>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium" style={{ color: C.paper }}>
                 {p.name}
               </div>
-              <div className="font-mono text-[11px]" style={{ color: C.muted }}>
+              <div className="truncate font-mono text-[11px]" style={{ color: C.muted }}>
                 {!available ? "Coming soon" : state.connected ? state.handle : "Not connected"}
               </div>
             </div>

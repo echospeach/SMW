@@ -92,17 +92,17 @@ export function BillingView({
 
       {hasActiveSubscription && (
         <div
-          className="mx-auto flex w-fit items-center gap-3 rounded-xl px-4 py-3"
+          className="mx-auto flex w-full flex-wrap items-center justify-center gap-3 rounded-xl px-4 py-3 sm:w-fit"
           style={{ background: C.raised, border: `1px solid ${C.line}` }}
         >
-          <CreditCard size={16} color={C.amber} />
+          <CreditCard size={16} color={C.amber} className="shrink-0" />
           <span className="text-xs" style={{ color: C.muted }}>
             Manage your payment method, invoices, or cancel anytime.
           </span>
           <button
             onClick={goToPortal}
             disabled={pendingPortal}
-            className="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-60"
+            className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-60"
             style={{ background: C.amber, color: C.ink }}
           >
             {pendingPortal ? "Opening…" : "Manage billing"}

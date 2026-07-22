@@ -135,16 +135,19 @@ export function AutomationView({
           >
             <div className="mb-3 flex items-center gap-3">
               <PlatformBadge id={p.id} size={16} />
-              <span className="flex-1 text-sm font-medium" style={{ color: C.paper }}>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium" style={{ color: C.paper }}>
                 {p.name}
               </span>
               <button
                 onClick={() => toggle(p.id)}
-                className="flex items-center gap-1.5 text-xs"
+                aria-label={cfg.enabled ? "Auto-posting on" : "Paused"}
+                className="flex shrink-0 items-center gap-1.5 text-xs"
                 style={{ color: cfg.enabled ? C.green : C.muted }}
               >
                 {cfg.enabled ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
-                {cfg.enabled ? "Auto-posting on" : "Paused"}
+                <span className="hidden sm:inline">
+                  {cfg.enabled ? "Auto-posting on" : "Paused"}
+                </span>
               </button>
             </div>
 

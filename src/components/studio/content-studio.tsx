@@ -442,7 +442,7 @@ export function ContentStudio({
           <label className="text-xs" style={{ color: C.muted }}>
             Tone
           </label>
-          <div className="mt-1.5 flex gap-2">
+          <div className="mt-1.5 flex flex-wrap gap-2">
             {TONES.map((t) => (
               <button
                 key={t}

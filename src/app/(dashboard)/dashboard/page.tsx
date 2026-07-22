@@ -52,7 +52,7 @@ export default async function DashboardPage() {
 
       {showOnboarding && <OnboardingChecklist steps={onboarding.steps} />}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
         <StatCard eyebrow="Scheduled" value={scheduled} sub="Queued to publish" />
         <StatCard eyebrow="Published" value={published} sub="Last 7 days" />
         <StatCard eyebrow="Awaiting review" value={drafts} sub="Sitting in drafts" />
@@ -65,22 +65,24 @@ export default async function DashboardPage() {
 
       {next?.scheduledAt && (
         <div
-          className="flex items-center gap-4 rounded-xl p-4"
+          className="flex flex-col gap-3 rounded-xl p-4 sm:flex-row sm:items-center sm:gap-4"
           style={{ background: C.raised, border: `1px solid ${C.line}` }}
         >
-          <Radio size={18} color={C.amber} className="shrink-0" />
-          <div className="flex-1">
-            <div
-              className="font-mono text-[10px] tracking-[0.15em] uppercase"
-              style={{ color: C.amber }}
-            >
-              Next in queue
-            </div>
-            <div className="mt-0.5 text-sm" style={{ color: C.paper }}>
-              {next.text}
+          <div className="flex items-center gap-3">
+            <Radio size={18} color={C.amber} className="shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div
+                className="font-mono text-[10px] tracking-[0.15em] uppercase"
+                style={{ color: C.amber }}
+              >
+                Next in queue
+              </div>
+              <div className="mt-0.5 text-sm" style={{ color: C.paper }}>
+                {next.text}
+              </div>
             </div>
           </div>
-          <div className="shrink-0 text-right">
+          <div className="shrink-0 sm:text-right">
             <div className="font-mono text-sm" style={{ color: C.paper }}>
               {fmtTime(next.scheduledAt)}
             </div>
