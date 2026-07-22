@@ -119,8 +119,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const queueResult = await publishDueQueueItems();
-  const automationResult = await runAutomationSlots();
+  try {
+    const queueResult = await publishDueQueueItems();
+    const automationResult = await runAutomationSlots();
+    const summary = { queue: queueResult, automation: automationResult };
 
-  return NextResponse.json({ ok: true, queue: queueResult, automation: automationResult });
+    await prisma.cronRun.create({ data: { name: "publish", ok: true, summary } });
+    return NextResponse.json({ ok: true, ...summary });
+  } catch (err) {
+    await prisma.cronRun.create({ data: { name: "publish", ok: false, error: String(err) } });
+    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
+  }
 }

@@ -22,3 +22,8 @@ export const ResetPasswordSchema = z
     error: "Passwords don't match.",
     path: ["confirmPassword"],
   });
+
+export const AdminLoginSchema = z.object({
+  email: z.email({ error: "Please enter a valid email." }).trim(),
+  password: z.string().min(1).trim(),
+});

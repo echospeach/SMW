@@ -62,6 +62,7 @@ model User {
   stripeSubscriptionId String?  @unique
   subscriptionStatus   String?
   onboardingDismissed  Boolean  @default(false)
+  suspended            Boolean  @default(false)
   referralCode         String   @unique @default(cuid())
   referredByUserId     String?
   referredByUser       User?    @relation("Referrals", fields: [referredByUserId], references: [id])
@@ -247,4 +248,28 @@ model VideoRenderLog {
 
   @@index([userId, createdAt])
   @@index([userId, contentHash])
+}
+
+// Fully separate identity space from User -- the admin portal has its own
+// login and session mechanism, deliberately isolated from Auth.js. Every row
+// is a full admin; no roles/permissions, kept minimal on purpose.
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Append-only run history for the cron routes (publish/metrics/weekly-recap),
+// which previously persisted nothing -- surfaced on the admin health page.
+model CronRun {
+  id        String   @id @default(cuid())
+  name      String
+  ok        Boolean
+  summary   Json?
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
 }

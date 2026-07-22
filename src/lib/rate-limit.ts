@@ -1,12 +1,13 @@
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
-export type AuthAttemptKind = "login" | "register" | "password_reset_request";
+export type AuthAttemptKind = "login" | "register" | "password_reset_request" | "admin_login";
 
 const WINDOWS: Record<AuthAttemptKind, { windowMs: number; maxPerIp: number; maxPerEmail?: number }> = {
   login: { windowMs: 15 * 60 * 1000, maxPerIp: 5, maxPerEmail: 5 },
   register: { windowMs: 60 * 60 * 1000, maxPerIp: 3 },
   password_reset_request: { windowMs: 60 * 60 * 1000, maxPerIp: 3 },
+  admin_login: { windowMs: 15 * 60 * 1000, maxPerIp: 5, maxPerEmail: 5 },
 };
 
 export async function getClientIp(): Promise<string> {

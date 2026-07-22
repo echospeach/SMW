@@ -24,6 +24,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const passwordMatches = await compare(password, user.passwordHash);
         if (!passwordMatches) return null;
+        if (user.suspended) return null;
 
         return { id: user.id, email: user.email };
       },
