@@ -160,36 +160,38 @@ export function ContentStudio({
     setGenerateError(null);
     setImageUrl(null);
     setImageError(null);
-    try {
-      const textPromise = (async () => {
-        const res = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type,
-            topic,
-            tone,
-            targetPlatforms: Array.from(targets),
-            selectedTrend,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (isVideo) {
-            setDraft(data.script);
-            setVideoDuration(data.duration);
-          } else {
-            setDraft(data.draft);
-          }
-        } else {
-          const data = await res.json().catch(() => null);
-          setGenerateError(data?.error ?? "Couldn't generate a draft. Try again.");
-        }
-      })().catch(() => {
-        setGenerateError("Couldn't reach the server. Check your connection and try again.");
-      });
 
-      await Promise.all([textPromise, isImageType ? generateImage() : Promise.resolve()]);
+    // Image generation runs independently and often takes much longer than
+    // the text draft -- kick it off but don't block the caption/schedule
+    // panel on it (generateImage() never throws, it reports its own errors).
+    if (isImageType) generateImage();
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          topic,
+          tone,
+          targetPlatforms: Array.from(targets),
+          selectedTrend,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (isVideo) {
+          setDraft(data.script);
+          setVideoDuration(data.duration);
+        } else {
+          setDraft(data.draft);
+        }
+      } else {
+        const data = await res.json().catch(() => null);
+        setGenerateError(data?.error ?? "Couldn't generate a draft. Try again.");
+      }
+    } catch {
+      setGenerateError("Couldn't reach the server. Check your connection and try again.");
     } finally {
       setGenerating(false);
     }
@@ -509,6 +511,7 @@ export function ContentStudio({
           disabled={
             !topic.trim() ||
             generating ||
+            imageGenerating ||
             (isVideo && (!videoAllowed || videoCapReached)) ||
             (isImageType && (!videoAllowed || videoCapReached))
           }
