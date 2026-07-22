@@ -1,7 +1,24 @@
 import sharp from "sharp";
+import satori from "satori";
+import type { ReactNode } from "react";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { toFile } from "openai";
 import type { Ratio } from "@/generated/prisma/enums";
 import { openai } from "./openai-client";
+
+// Vercel's serverless Node runtime resolves `sharp` to its portable
+// resvg/wasm build rather than the native linux binary, which has no system
+// fonts available -- resvg can't rasterize <text> at all there. satori
+// sidesteps this by pre-shaping the text into vector <path> outlines using a
+// font we ship ourselves, so rasterization never needs font lookup.
+let overlayFontPromise: Promise<Buffer> | null = null;
+function loadOverlayFont(): Promise<Buffer> {
+  if (!overlayFontPromise) {
+    overlayFontPromise = readFile(path.join(process.cwd(), "src/lib/ai/fonts/overlay-font.ttf"));
+  }
+  return overlayFontPromise;
+}
 
 const SIZE_BY_RATIO: Record<Ratio, "1024x1536" | "1024x1024" | "1536x1024"> = {
   PORTRAIT: "1024x1536",
@@ -54,15 +71,6 @@ function toSafeBuffer(buf: Buffer): Buffer {
   return Buffer.from(Uint8Array.prototype.slice.call(buf));
 }
 
-function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
 function wrapText(text: string, maxCharsPerLine: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
@@ -95,13 +103,9 @@ async function compositeTextOverlay(
   const lineHeight = fontSize * 1.25;
   const blockHeight = lines.length * lineHeight;
   const scrimHeight = Math.min(height, blockHeight + height * 0.16);
-  const firstBaselineY = height - scrimHeight + (scrimHeight - blockHeight) / 2 + fontSize * 0.85;
+  const paddingBottom = Math.round((scrimHeight - blockHeight) / 2);
 
-  const tspans = lines
-    .map((line, i) => `<tspan x="50%" y="${firstBaselineY + i * lineHeight}">${escapeXml(line)}</tspan>`)
-    .join("");
-
-  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+  const scrimSvg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="#12151C" stop-opacity="0" />
@@ -109,16 +113,52 @@ async function compositeTextOverlay(
       </linearGradient>
     </defs>
     <rect x="0" y="${height - scrimHeight}" width="${width}" height="${scrimHeight}" fill="url(#scrim)" />
-    <text font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="${fontSize}" fill="#EDE9DD" text-anchor="middle">
-      ${tspans}
-    </text>
   </svg>`;
 
+  const fontData = await loadOverlayFont();
+  const textTree = {
+    type: "div",
+    props: {
+      style: {
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        alignItems: "center",
+        paddingBottom,
+        gap: lineHeight - fontSize,
+      },
+      children: lines.map((line) => ({
+        type: "div",
+        props: {
+          style: {
+            fontSize,
+            fontWeight: 700,
+            color: "#EDE9DD",
+            lineHeight: 1,
+            textAlign: "center" as const,
+          },
+          children: line,
+        },
+      })),
+    },
+  };
+  const textSvg = await satori(textTree as unknown as ReactNode, {
+    width,
+    height,
+    fonts: [{ name: "Overlay", data: fontData, weight: 700, style: "normal" }],
+  });
+
   const safeImage = toSafeBuffer(image);
-  const safeOverlay = toSafeBuffer(Buffer.from(svg, "utf-8"));
+  const safeScrim = toSafeBuffer(Buffer.from(scrimSvg, "utf-8"));
+  const safeText = toSafeBuffer(Buffer.from(textSvg, "utf-8"));
 
   return sharp(safeImage)
-    .composite([{ input: safeOverlay, top: 0, left: 0 }])
+    .composite([
+      { input: safeScrim, top: 0, left: 0 },
+      { input: safeText, top: 0, left: 0 },
+    ])
     .png()
     .toBuffer();
 }
