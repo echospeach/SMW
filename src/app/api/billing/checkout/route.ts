@@ -29,7 +29,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "That plan isn't configured yet" }, { status: 500 });
   }
 
-  const origin = req.nextUrl.origin;
+  // process.env.APP_URL over req.nextUrl.origin: the latter is derived from
+  // request headers, which a client could manipulate to redirect the
+  // post-checkout flow to another host.
+  const origin = process.env.APP_URL ?? req.nextUrl.origin;
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",

@@ -6,6 +6,7 @@ import { getAvatarMonthlyLimit, planIncludesVideo } from "@/lib/plan";
 import { prisma } from "@/lib/prisma";
 import { startOfMonth } from "@/lib/scheduling/engine";
 import { generateAvatarVideo } from "@/lib/avatar/heygen";
+import { checkApiRateLimit } from "@/lib/api-rate-limit";
 
 function hashContent(script: string, avatarId: string): string {
   return createHash("sha256").update(`${avatarId}\n${script}`).digest("hex");
@@ -29,6 +30,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "Add your HeyGen avatar in Settings first." },
       { status: 400 },
+    );
+  }
+
+  const allowed = await checkApiRateLimit(userId, "render-avatar-video", {
+    windowMs: 5 * 60 * 1000,
+    max: 5,
+  });
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "You're generating too quickly. Wait a few minutes and try again." },
+      { status: 429 },
     );
   }
 

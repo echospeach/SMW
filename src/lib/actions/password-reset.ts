@@ -71,7 +71,7 @@ export async function resetPassword(
     return { error: "This reset link is invalid or has expired. Request a new one." };
   }
 
-  const passwordHash = await hash(password, 10);
+  const passwordHash = await hash(password, 12);
 
   // Guard against a race between two redemption attempts of the same token:
   // scope the update to usedAt: null so only the first one can succeed.

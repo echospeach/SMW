@@ -19,7 +19,7 @@ async function main() {
     return;
   }
 
-  const passwordHash = await hash(password, 10);
+  const passwordHash = await hash(password, 12);
   await prisma.adminUser.upsert({
     where: { email },
     update: { passwordHash },

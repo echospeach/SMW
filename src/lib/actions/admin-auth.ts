@@ -9,6 +9,11 @@ import { checkAuthRateLimit, recordAuthAttempt } from "@/lib/rate-limit";
 
 export type AdminAuthFormState = { error?: string } | undefined;
 
+// See src/lib/auth.ts for why this exists -- keeps a nonexistent-admin
+// lookup and a wrong-password lookup taking the same amount of time.
+const DUMMY_PASSWORD_HASH =
+  "$2b$10$MdfphU./7ZFalRNXZxdDJ.1oZOYq7yaLMivfeQ605/r5M.6cjy4qW";
+
 export async function adminLogin(
   _prevState: AdminAuthFormState,
   formData: FormData,
@@ -31,11 +36,8 @@ export async function adminLogin(
   await recordAuthAttempt("admin_login", false, email);
 
   const admin = await prisma.adminUser.findUnique({ where: { email } });
-  if (!admin) {
-    return { error: "Invalid email or password." };
-  }
-  const passwordMatches = await compare(password, admin.passwordHash);
-  if (!passwordMatches) {
+  const passwordMatches = await compare(password, admin?.passwordHash ?? DUMMY_PASSWORD_HASH);
+  if (!admin || !passwordMatches) {
     return { error: "Invalid email or password." };
   }
 

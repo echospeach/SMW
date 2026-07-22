@@ -3,6 +3,7 @@ import { getConnector } from "@/lib/connectors/registry";
 import { prisma } from "@/lib/prisma";
 import { isSlotDue, startOfDay } from "@/lib/scheduling/engine";
 import { sendCronFailureAlert, sendPostFailedEmail, sendPostPublishedEmail } from "@/lib/email/send";
+import { isValidCronSecret } from "@/lib/cron-auth";
 
 async function publishDueQueueItems() {
   const due = await prisma.post.findMany({
@@ -114,8 +115,7 @@ async function runAutomationSlots() {
 }
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (!secret || secret !== process.env.CRON_SECRET) {
+  if (!isValidCronSecret(req.headers.get("x-cron-secret"))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Top-ups aren't configured yet" }, { status: 500 });
   }
 
-  const origin = req.nextUrl.origin;
+  const origin = process.env.APP_URL ?? req.nextUrl.origin;
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",

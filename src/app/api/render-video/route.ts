@@ -6,6 +6,7 @@ import { getVideoMonthlyLimit, planIncludesVideo } from "@/lib/plan";
 import { prisma } from "@/lib/prisma";
 import { startOfMonth } from "@/lib/scheduling/engine";
 import { consumeBonusCredit, getAvailableBonusCredits } from "@/lib/referral";
+import { checkApiRateLimit } from "@/lib/api-rate-limit";
 
 function hashContent(script: string, ratio: string): string {
   return createHash("sha256").update(`${ratio}\n${script}`).digest("hex");
@@ -20,6 +21,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "Video generation requires the Growth plan or higher." },
       { status: 403 },
+    );
+  }
+
+  const allowed = await checkApiRateLimit(userId, "render-video", {
+    windowMs: 5 * 60 * 1000,
+    max: 10,
+  });
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "You're rendering too quickly. Wait a few minutes and try again." },
+      { status: 429 },
     );
   }
 

@@ -110,6 +110,17 @@ model AuthAttempt {
   @@index([email, kind, createdAt])
 }
 
+// Per-user burst-rate limiter for expensive/abusable endpoints not already
+// bounded by a monthly plan quota (e.g. /api/generate's text/script calls).
+model ApiCallLog {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String
+  createdAt DateTime @default(now())
+
+  @@index([userId, endpoint, createdAt])
+}
+
 // Append-only bonus-generation ledger, mirrors VideoRenderLog's role as the
 // source of truth for usage: `amount - consumed` summed across all rows is
 // the bonus quota still available, layered on top of the plan's base limit.

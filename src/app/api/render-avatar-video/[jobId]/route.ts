@@ -9,6 +9,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ job
 
   const { jobId } = await params;
 
+  // Without this, any authenticated user could poll any other user's jobId
+  // and read back their rendered avatar video URL.
+  const owned = await prisma.avatarRenderLog.findFirst({ where: { userId, heygenVideoId: jobId } });
+  if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   let job;
   try {
     job = await checkAvatarVideoStatus(jobId);

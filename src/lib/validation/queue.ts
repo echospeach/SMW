@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TrustedMediaUrlSchema } from "@/lib/validation/trusted-media-url";
 
 const isoDate = z.string().refine((v) => !isNaN(Date.parse(v)), { error: "Invalid date" });
 
@@ -11,8 +12,8 @@ export const QueueCreateSchema = z.object({
   tone: z.enum(["CONFIDENT", "PLAYFUL", "INFORMATIVE"]).optional(),
   duration: z.string().optional(),
   ratio: z.enum(["PORTRAIT", "SQUARE", "LANDSCAPE"]).optional(),
-  videoUrl: z.string().url().optional(),
-  imageUrl: z.string().url().optional(),
+  videoUrl: TrustedMediaUrlSchema.optional(),
+  imageUrl: TrustedMediaUrlSchema.optional(),
   trendLabel: z.string().optional(),
 });
 

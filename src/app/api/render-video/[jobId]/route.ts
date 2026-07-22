@@ -8,6 +8,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ job
 
   const { jobId } = await params;
 
+  // Without this, any authenticated user could poll any other user's jobId
+  // and read back their rendered video URL.
+  const owned = await prisma.videoRenderLog.findFirst({ where: { userId, jobId } });
+  if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   const res = await fetch(`${process.env.RENDERER_URL}/jobs/${jobId}`, {
     headers: { "x-render-secret": process.env.RENDER_SECRET ?? "" },
   });

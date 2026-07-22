@@ -49,7 +49,7 @@ export async function register(
 
   const referrer = ref ? await prisma.user.findUnique({ where: { referralCode: ref } }) : null;
 
-  const passwordHash = await hash(password, 10);
+  const passwordHash = await hash(password, 12);
 
   const newUser = await prisma.user.create({
     data: {

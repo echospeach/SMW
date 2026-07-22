@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendCronFailureAlert, sendWeeklyRecapEmail } from "@/lib/email/send";
+import { isValidCronSecret } from "@/lib/cron-auth";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (!secret || secret !== process.env.CRON_SECRET) {
+  if (!isValidCronSecret(req.headers.get("x-cron-secret"))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

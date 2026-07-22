@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No active subscription yet" }, { status: 400 });
   }
 
-  const origin = req.nextUrl.origin;
+  const origin = process.env.APP_URL ?? req.nextUrl.origin;
 
   const session = await stripe.billingPortal.sessions.create({
     customer: user.stripeCustomerId,

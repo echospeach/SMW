@@ -8,6 +8,7 @@ import { startOfMonth } from "@/lib/scheduling/engine";
 import { GenerateImageSchema } from "@/lib/validation/generate-image";
 import { generateThumbnail } from "@/lib/ai/thumbnail";
 import { consumeBonusCredit, getAvailableBonusCredits } from "@/lib/referral";
+import { checkApiRateLimit } from "@/lib/api-rate-limit";
 
 function hashContent(prompt: string, ratio: string): string {
   return createHash("sha256").update(`${ratio}\n${prompt}`).digest("hex");
@@ -25,6 +26,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "Image generation requires the Growth plan or higher." },
       { status: 403 },
+    );
+  }
+
+  // Monthly quota below bounds total cost, but not burst rate -- this stops
+  // a script from firing dozens of requests in the same second.
+  const allowed = await checkApiRateLimit(userId, "generate-image", {
+    windowMs: 5 * 60 * 1000,
+    max: 10,
+  });
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "You're generating too quickly. Wait a few minutes and try again." },
+      { status: 429 },
     );
   }
 

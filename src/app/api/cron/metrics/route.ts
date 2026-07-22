@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getConnector } from "@/lib/connectors/registry";
 import { prisma } from "@/lib/prisma";
 import { sendCronFailureAlert } from "@/lib/email/send";
+import { isValidCronSecret } from "@/lib/cron-auth";
 
 const LOOKBACK_DAYS = 30;
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (!secret || secret !== process.env.CRON_SECRET) {
+  if (!isValidCronSecret(req.headers.get("x-cron-secret"))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
