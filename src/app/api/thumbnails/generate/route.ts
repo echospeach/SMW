@@ -7,6 +7,7 @@ import { getVideoMonthlyLimit, planIncludesVideo } from "@/lib/plan";
 import { startOfMonth } from "@/lib/scheduling/engine";
 import { ThumbnailGenerateSchema } from "@/lib/validation/thumbnail";
 import { generateThumbnail } from "@/lib/ai/thumbnail";
+import { consumeBonusCredit, getAvailableBonusCredits } from "@/lib/referral";
 
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 
@@ -74,14 +75,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ cached: true, url: cached.videoUrl });
   }
 
-  const limit = getVideoMonthlyLimit(user.plan);
+  const baseLimit = getVideoMonthlyLimit(user.plan);
+  const bonusCredits = await getAvailableBonusCredits(userId);
   const usedThisMonth = await prisma.videoRenderLog.count({
     where: { userId, createdAt: { gte: startOfMonth(new Date()) } },
   });
-  if (usedThisMonth >= limit) {
+  if (usedThisMonth >= baseLimit + bonusCredits) {
     return NextResponse.json(
       {
-        error: `You've used all ${limit} AI generations included in your plan this month. It resets next month, or upgrade for more.`,
+        error: `You've used all ${baseLimit + bonusCredits} AI generations included in your plan this month. It resets next month, or upgrade for more.`,
       },
       { status: 429 },
     );
@@ -108,6 +110,7 @@ export async function POST(req: NextRequest) {
     await prisma.videoRenderLog.create({
       data: { userId, contentHash, videoUrl: blob.url },
     });
+    if (usedThisMonth >= baseLimit) await consumeBonusCredit(userId);
 
     return NextResponse.json({ url: blob.url });
   } catch (err) {

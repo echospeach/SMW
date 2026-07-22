@@ -61,6 +61,11 @@ model User {
   stripeCustomerId     String?  @unique
   stripeSubscriptionId String?  @unique
   subscriptionStatus   String?
+  onboardingDismissed  Boolean  @default(false)
+  referralCode         String   @unique @default(cuid())
+  referredByUserId     String?
+  referredByUser       User?    @relation("Referrals", fields: [referredByUserId], references: [id])
+  referrals            User[]   @relation("Referrals")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -69,6 +74,22 @@ model User {
   settings        UserSettings?
   posts           Post[]
   videoRenderLogs VideoRenderLog[]
+  referralCredits ReferralCredit[]
+}
+
+// Append-only bonus-generation ledger, mirrors VideoRenderLog's role as the
+// source of truth for usage: `amount - consumed` summed across all rows is
+// the bonus quota still available, layered on top of the plan's base limit.
+model ReferralCredit {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int
+  reason    String
+  consumed  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model SocialConnection {
@@ -107,10 +128,16 @@ model AutomationRule {
 }
 
 model UserSettings {
-  id           String  @id @default(cuid())
-  userId       String  @unique
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  autoTrending Boolean @default(true)
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  autoTrending          Boolean  @default(true)
+  notifyOnPublish       Boolean  @default(true)
+  notifyOnFailure       Boolean  @default(true)
+  notifyWeeklyRecap     Boolean  @default(true)
+  brandIndustry         String?
+  brandToneDescription  String?  @db.Text
+  brandExamplePosts     String[] @default([])
 }
 
 model Post {
@@ -125,6 +152,8 @@ model Post {
   duration               String?
   ratio                  Ratio?
   videoUrl               String?
+  imageUrl               String?
+  externalPostId         String?
   scheduledAt            DateTime?
   publishedAt            DateTime?
   failureReason          String?
@@ -133,7 +162,26 @@ model Post {
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
 
+  metrics PostMetric[]
+
   @@index([userId, status, scheduledAt])
+}
+
+// One row per metrics fetch (a time series, not a mutable counter) so a
+// future recap email or trend chart can use history; "current" = latest row
+// per post. Only populated for posts published through a real connector.
+model PostMetric {
+  id          String   @id @default(cuid())
+  postId      String
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  impressions Int?
+  likes       Int?
+  comments    Int?
+  shares      Int?
+  views       Int?
+  fetchedAt   DateTime @default(now())
+
+  @@index([postId, fetchedAt])
 }
 
 // Idempotency guard for the automation engine: one row per (rule, calendar day, slot)

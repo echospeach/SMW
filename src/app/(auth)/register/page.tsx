@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Gift } from "lucide-react";
 import { register } from "@/lib/actions/auth";
 import { C } from "@/lib/theme";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const [state, formAction, pending] = useActionState(register, undefined);
+  const ref = useSearchParams().get("ref");
 
   return (
     <div
@@ -33,7 +36,18 @@ export default function RegisterPage() {
           Create your account
         </h1>
 
+        {ref && (
+          <div
+            className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2 text-xs"
+            style={{ background: C.raised, border: `1px solid ${C.line}`, color: C.paper }}
+          >
+            <Gift size={14} color={C.amber} className="shrink-0" />
+            Invited by a friend — you&apos;ll both get bonus AI generations once you sign up.
+          </div>
+        )}
+
         <form action={formAction} className="space-y-3">
+          {ref && <input type="hidden" name="ref" value={ref} />}
           <div>
             <label className="text-xs" style={{ color: C.muted }}>
               Email
@@ -97,5 +111,13 @@ export default function RegisterPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterForm />
+    </Suspense>
   );
 }

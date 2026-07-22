@@ -1,7 +1,7 @@
 import { PlatformId } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
-import { publishToPage, publishVideoToPage } from "./meta";
-import type { PlatformConnector, PublishInput, PublishResult } from "./types";
+import { fetchPostInsights, publishToPage, publishVideoToPage } from "./meta";
+import type { PlatformConnector, PostMetrics, PublishInput, PublishResult } from "./types";
 
 // Unlike MockConnector, real connect/disconnect happens through the OAuth
 // round trip (see src/app/api/accounts/facebook/{authorize,callback}) rather
@@ -41,5 +41,21 @@ export class MetaGraphConnector implements PlatformConnector {
 
   async checkStatus(): Promise<"published"> {
     return "published";
+  }
+
+  async fetchMetrics(userId: string, externalPostId: string): Promise<PostMetrics | null> {
+    const connection = await prisma.socialConnection.findUnique({
+      where: { userId_platformId: { userId, platformId: this.platformId } },
+    });
+    if (!connection?.connected || !connection.accessToken) return null;
+
+    const insights = await fetchPostInsights(externalPostId, connection.accessToken);
+    if (!insights) return null;
+    return {
+      impressions: insights.impressions,
+      likes: insights.likes,
+      comments: insights.comments,
+      shares: insights.shares,
+    };
   }
 }

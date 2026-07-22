@@ -28,7 +28,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const result = await generateContent(parsed.data);
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId },
+    select: { brandIndustry: true, brandToneDescription: true, brandExamplePosts: true },
+  });
+
+  const result = await generateContent(parsed.data, {
+    industry: settings?.brandIndustry,
+    toneDescription: settings?.brandToneDescription,
+    examplePosts: settings?.brandExamplePosts,
+  });
 
   if (result.kind === "refused") {
     return NextResponse.json(

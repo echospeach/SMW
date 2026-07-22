@@ -6,6 +6,7 @@ import { PlatformId } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { signIn, signOut } from "@/lib/auth";
 import { RegisterSchema } from "@/lib/validation/auth";
+import { grantReferralBonuses } from "@/lib/referral";
 
 export type AuthFormState = { error?: string } | undefined;
 
@@ -27,23 +28,27 @@ export async function register(
   const parsed = RegisterSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
+    ref: formData.get("ref") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
-  const { email, password } = parsed.data;
+  const { email, password, ref } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return { error: "An account with that email already exists." };
   }
 
+  const referrer = ref ? await prisma.user.findUnique({ where: { referralCode: ref } }) : null;
+
   const passwordHash = await hash(password, 10);
 
-  await prisma.user.create({
+  const newUser = await prisma.user.create({
     data: {
       email,
       passwordHash,
+      referredByUserId: referrer?.id,
       settings: { create: { autoTrending: true } },
       connections: {
         create: Object.values(PlatformId).map((platformId) => ({
@@ -60,6 +65,8 @@ export async function register(
       },
     },
   });
+
+  if (referrer) await grantReferralBonuses(referrer.id, newUser.id);
 
   await signIn("credentials", { email, password, redirectTo: "/dashboard" });
 }

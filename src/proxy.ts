@@ -9,6 +9,8 @@ const PROTECTED_PREFIXES = [
   "/accounts",
   "/calendar",
   "/billing",
+  "/analytics",
+  "/settings",
 ];
 const AUTH_PAGES = ["/login", "/register"];
 

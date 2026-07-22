@@ -17,7 +17,13 @@ const TONE_LABEL: Record<GenerateRequest["tone"], string> = {
   INFORMATIVE: "Informative",
 };
 
-function buildUserPrompt(req: GenerateRequest): string {
+export type BrandVoice = {
+  industry?: string | null;
+  toneDescription?: string | null;
+  examplePosts?: string[];
+};
+
+function buildUserPrompt(req: GenerateRequest, brandVoice?: BrandVoice): string {
   const lines = [
     `Content type: ${req.type}`,
     `Topic: ${req.topic}`,
@@ -29,6 +35,17 @@ function buildUserPrompt(req: GenerateRequest): string {
   if (req.selectedTrend) {
     lines.push(
       `Weave in this trending topic where it fits naturally: "${req.selectedTrend.label}"`,
+    );
+  }
+  if (brandVoice?.industry) {
+    lines.push(`This brand's industry: ${brandVoice.industry}`);
+  }
+  if (brandVoice?.toneDescription) {
+    lines.push(`This brand's distinctive voice, described by the owner: ${brandVoice.toneDescription}`);
+  }
+  if (brandVoice?.examplePosts && brandVoice.examplePosts.length > 0) {
+    lines.push(
+      `Example posts from this brand to match the style of (don't copy them, match the voice):\n${brandVoice.examplePosts.map((p) => `- ${p}`).join("\n")}`,
     );
   }
   return lines.join("\n");
@@ -44,13 +61,16 @@ export type GenerateResult =
   | { kind: "video"; script: string; duration: string }
   | { kind: "refused" };
 
-export async function generateContent(req: GenerateRequest): Promise<GenerateResult> {
+export async function generateContent(
+  req: GenerateRequest,
+  brandVoice?: BrandVoice,
+): Promise<GenerateResult> {
   const message = await anthropic.messages.create({
     model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5",
     max_tokens: req.type === "VIDEO" ? 500 : 250,
     thinking: { type: "disabled" },
     system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildUserPrompt(req) }],
+    messages: [{ role: "user", content: buildUserPrompt(req, brandVoice) }],
   });
 
   if (message.stop_reason === "refusal") {

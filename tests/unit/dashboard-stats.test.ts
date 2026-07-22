@@ -12,6 +12,7 @@ function post(overrides: Partial<PostSummary>): PostSummary {
     duration: null,
     ratio: null,
     videoUrl: null,
+    imageUrl: null,
     scheduledAt: null,
     publishedAt: null,
     createdAt: new Date("2026-01-01"),

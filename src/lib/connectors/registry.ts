@@ -1,20 +1,26 @@
 import { PlatformId } from "@/generated/prisma/enums";
-import { MockConnector } from "./mock";
 import { MetaGraphConnector } from "./meta-connector";
 import { TikTokConnector } from "./tiktok-connector";
+import { InstagramConnector } from "./instagram-connector";
+import { XConnector } from "./x-connector";
+import { LinkedInConnector } from "./linkedin-connector";
+import { YouTubeConnector } from "./youtube-connector";
 import type { PlatformConnector } from "./types";
 
 // Real integrations drop in one at a time by implementing PlatformConnector
 // and swapping the entry here — nothing upstream (scheduling engine, API
-// routes, UI) calls a connector class directly. Facebook and TikTok are real;
-// the rest are still mocked pending their own OAuth apps.
+// routes, UI) calls a connector class directly. All six platforms now have
+// real connector code; Instagram/X/LinkedIn/YouTube stay invisible in the
+// Accounts UI (see accounts-view.tsx's AVAILABLE_PLATFORMS/OAUTH_PLATFORMS)
+// until their own verification/billing step is cleared, same as TikTok
+// already is despite being fully real.
 const registry: Record<PlatformId, PlatformConnector> = {
   FACEBOOK: new MetaGraphConnector(),
-  INSTAGRAM: new MockConnector(PlatformId.INSTAGRAM),
-  X: new MockConnector(PlatformId.X),
-  LINKEDIN: new MockConnector(PlatformId.LINKEDIN),
+  INSTAGRAM: new InstagramConnector(),
+  X: new XConnector(),
+  LINKEDIN: new LinkedInConnector(),
   TIKTOK: new TikTokConnector(),
-  YOUTUBE: new MockConnector(PlatformId.YOUTUBE),
+  YOUTUBE: new YouTubeConnector(),
 };
 
 export function getConnector(platformId: PlatformId): PlatformConnector {

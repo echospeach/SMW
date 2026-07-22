@@ -5,6 +5,7 @@ import { RenderVideoSchema } from "@/lib/validation/render-video";
 import { getVideoMonthlyLimit, planIncludesVideo } from "@/lib/plan";
 import { prisma } from "@/lib/prisma";
 import { startOfMonth } from "@/lib/scheduling/engine";
+import { consumeBonusCredit, getAvailableBonusCredits } from "@/lib/referral";
 
 function hashContent(script: string, ratio: string): string {
   return createHash("sha256").update(`${ratio}\n${script}`).digest("hex");
@@ -43,14 +44,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ cached: true, videoUrl: cached.videoUrl });
   }
 
-  const limit = getVideoMonthlyLimit(user.plan);
+  const baseLimit = getVideoMonthlyLimit(user.plan);
+  const bonusCredits = await getAvailableBonusCredits(userId);
   const usedThisMonth = await prisma.videoRenderLog.count({
     where: { userId, createdAt: { gte: startOfMonth(new Date()) } },
   });
-  if (usedThisMonth >= limit) {
+  if (usedThisMonth >= baseLimit + bonusCredits) {
     return NextResponse.json(
       {
-        error: `You've used all ${limit} video renders included in your plan this month. It resets next month, or upgrade for more.`,
+        error: `You've used all ${baseLimit + bonusCredits} video renders included in your plan this month. It resets next month, or upgrade for more.`,
       },
       { status: 429 },
     );
@@ -76,6 +78,7 @@ export async function POST(req: NextRequest) {
   // job completes (see [jobId]/route.ts), which is what makes future
   // identical-content requests cacheable.
   await prisma.videoRenderLog.create({ data: { userId, contentHash, jobId } });
+  if (usedThisMonth >= baseLimit) await consumeBonusCredit(userId);
 
   return NextResponse.json({ jobId }, { status: 202 });
 }

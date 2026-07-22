@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   CalendarDays,
   CreditCard,
   Image as ImageIcon,
   LayoutDashboard,
   PenSquare,
+  Settings,
   Users,
   Zap,
 } from "lucide-react";
@@ -20,7 +22,9 @@ const NAV_ITEMS = [
   { href: "/automation", label: "Automation", icon: Zap },
   { href: "/accounts", label: "Accounts", icon: Users },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/billing", label: "Billing", icon: CreditCard },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function SidebarNav() {

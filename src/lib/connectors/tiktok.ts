@@ -1,6 +1,6 @@
 const API_BASE = "https://open.tiktokapis.com/v2";
 
-export const TIKTOK_OAUTH_SCOPES = ["user.info.basic", "video.publish"];
+export const TIKTOK_OAUTH_SCOPES = ["user.info.basic", "video.publish", "video.list"];
 
 export function tiktokRedirectUri(): string {
   return `${process.env.APP_URL}/api/accounts/tiktok/callback`;
@@ -144,4 +144,56 @@ export async function publishVideo(
   }
 
   return init.data.publish_id;
+}
+
+// TikTok's publish flow is async: publish() only returns a `publish_id`
+// (used to track upload/moderation), not the final video ID metrics are
+// queried by. This resolves one to the other once moderation completes.
+// Field name is genuinely spelled this way in TikTok's API.
+export async function resolvePublishedVideoId(
+  accessToken: string,
+  publishId: string,
+): Promise<string | null> {
+  const res = await tiktokFetch<{ data: { status: string; publicaly_available_post_id?: number[] } }>(
+    `${API_BASE}/post/publish/status/fetch/`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json; charset=UTF-8",
+      },
+      body: JSON.stringify({ publish_id: publishId }),
+    },
+  );
+  const videoId = res.data.publicaly_available_post_id?.[0];
+  return videoId != null ? String(videoId) : null;
+}
+
+export type TikTokVideoMetrics = {
+  like_count?: number;
+  comment_count?: number;
+  share_count?: number;
+  view_count?: number;
+};
+
+// Requires the `video.list` scope (see TIKTOK_OAUTH_SCOPES) in addition to
+// video.publish -- a connection made before this scope was added will need
+// to be reconnected before metrics can be fetched.
+export async function fetchVideoMetrics(
+  accessToken: string,
+  videoId: string,
+): Promise<TikTokVideoMetrics | null> {
+  const fields = "id,like_count,comment_count,share_count,view_count";
+  const res = await tiktokFetch<{ data: { videos: TikTokVideoMetrics[] } }>(
+    `${API_BASE}/video/query/?fields=${fields}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json; charset=UTF-8",
+      },
+      body: JSON.stringify({ filters: { video_ids: [videoId] } }),
+    },
+  );
+  return res.data.videos[0] ?? null;
 }

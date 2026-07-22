@@ -58,6 +58,9 @@ export function ContentStudio({
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageGenerating, setImageGenerating] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [scheduleAt, setScheduleAt] = useState("");
@@ -70,7 +73,42 @@ export function ContentStudio({
 
   const isVideo = type === "VIDEO";
   const isVisual = type !== "TEXT_POST";
+  const isImageType = isVisual && !isVideo;
   const connectedMeta = PLATFORMS.filter((p) => connectedPlatforms.includes(p.id));
+
+  function buildImagePrompt() {
+    const parts = [topic.trim()];
+    if (selectedTrend) parts.push(`referencing the trend "${selectedTrend.label}"`);
+    parts.push(
+      `${TONE_LABEL[tone].toLowerCase()} tone, ${type === "CAROUSEL" ? "carousel" : type === "STORY" ? "story" : "social media post"} image`,
+    );
+    return parts.join(", ");
+  }
+
+  async function generateImage() {
+    if (!topic.trim()) return;
+    setImageGenerating(true);
+    setImageError(null);
+    try {
+      const res = await fetch("/api/generate/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: buildImagePrompt(), ratio: ratio ?? "SQUARE" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setImageUrl(data.url);
+        if (!data.cached) setRendersUsed((n) => n + 1);
+      } else {
+        const data = await res.json().catch(() => null);
+        setImageError(data?.error ?? "Couldn't generate an image. Try again.");
+      }
+    } catch {
+      setImageError("Couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setImageGenerating(false);
+    }
+  }
 
   useEffect(() => {
     refreshTrends();
@@ -120,32 +158,38 @@ export function ContentStudio({
     setVideoUrl(null);
     setRenderError(null);
     setGenerateError(null);
+    setImageUrl(null);
+    setImageError(null);
     try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type,
-          topic,
-          tone,
-          targetPlatforms: Array.from(targets),
-          selectedTrend,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (isVideo) {
-          setDraft(data.script);
-          setVideoDuration(data.duration);
+      const textPromise = (async () => {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type,
+            topic,
+            tone,
+            targetPlatforms: Array.from(targets),
+            selectedTrend,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (isVideo) {
+            setDraft(data.script);
+            setVideoDuration(data.duration);
+          } else {
+            setDraft(data.draft);
+          }
         } else {
-          setDraft(data.draft);
+          const data = await res.json().catch(() => null);
+          setGenerateError(data?.error ?? "Couldn't generate a draft. Try again.");
         }
-      } else {
-        const data = await res.json().catch(() => null);
-        setGenerateError(data?.error ?? "Couldn't generate a draft. Try again.");
-      }
-    } catch {
-      setGenerateError("Couldn't reach the server. Check your connection and try again.");
+      })().catch(() => {
+        setGenerateError("Couldn't reach the server. Check your connection and try again.");
+      });
+
+      await Promise.all([textPromise, isImageType ? generateImage() : Promise.resolve()]);
     } finally {
       setGenerating(false);
     }
@@ -218,6 +262,7 @@ export function ContentStudio({
           duration: isVideo ? videoDuration : undefined,
           ratio: isVisual ? ratio : undefined,
           videoUrl: isVideo ? videoUrl : undefined,
+          imageUrl: isImageType ? imageUrl : undefined,
           trendLabel: selectedTrend?.label,
         }),
       });
@@ -227,6 +272,7 @@ export function ContentStudio({
         setScheduleAt("");
         setVideoDuration(null);
         setVideoUrl(null);
+        setImageUrl(null);
         router.push("/dashboard");
         router.refresh();
       } else {
@@ -288,6 +334,30 @@ export function ContentStudio({
           {type === "VIDEO" && videoAllowed && !videoCapReached && (
             <p className="mt-1.5 text-[11px]" style={{ color: C.muted }}>
               {rendersUsed} of {videoRendersLimit} video renders used this month.
+            </p>
+          )}
+          {isImageType && !videoAllowed && (
+            <p className="mt-1.5 text-[11px]" style={{ color: C.amber }}>
+              Image generation needs the Growth plan or higher.{" "}
+              <Link href="/billing" className="underline">
+                Upgrade in Billing
+              </Link>
+              .
+            </p>
+          )}
+          {isImageType && videoAllowed && videoCapReached && (
+            <p className="mt-1.5 text-[11px]" style={{ color: C.amber }}>
+              You&apos;ve used all {videoRendersLimit} AI generations included in your plan this
+              month. Resets next month, or{" "}
+              <Link href="/billing" className="underline">
+                upgrade for more
+              </Link>
+              .
+            </p>
+          )}
+          {isImageType && videoAllowed && !videoCapReached && (
+            <p className="mt-1.5 text-[11px]" style={{ color: C.muted }}>
+              {rendersUsed} of {videoRendersLimit} AI generations used this month.
             </p>
           )}
         </div>
@@ -439,7 +509,8 @@ export function ContentStudio({
           disabled={
             !topic.trim() ||
             generating ||
-            (isVideo && (!videoAllowed || videoCapReached))
+            (isVideo && (!videoAllowed || videoCapReached)) ||
+            (isImageType && (!videoAllowed || videoCapReached))
           }
           className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
           style={{ background: C.amber, color: C.ink }}
@@ -520,7 +591,7 @@ export function ContentStudio({
                 />
               </div>
             )}
-            {isVisual && !(isVideo && videoUrl) && (
+            {isVideo && !videoUrl && (
               <div
                 className="relative mx-auto flex items-center justify-center overflow-hidden rounded-lg"
                 style={{
@@ -534,28 +605,73 @@ export function ContentStudio({
                   className="flex h-11 w-11 items-center justify-center rounded-full"
                   style={{ background: C.amber }}
                 >
-                  {isVideo ? (
-                    <Play size={18} color={C.ink} fill={C.ink} />
-                  ) : (
-                    <ImageIcon size={18} color={C.ink} />
-                  )}
+                  <Play size={18} color={C.ink} fill={C.ink} />
                 </span>
-                {isVideo && (
+                <span
+                  className="absolute right-2 bottom-2 rounded px-1.5 py-0.5 font-mono text-[10px]"
+                  style={{ background: C.ink, color: C.paper }}
+                >
+                  {videoDuration}
+                </span>
+                <span
+                  className="absolute top-2 left-2 flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px]"
+                  style={{ background: C.ink, color: C.muted }}
+                >
+                  <Film size={10} /> {RATIOS.find((r) => r.id === ratio)?.sub.split(" · ")[0]}
+                </span>
+              </div>
+            )}
+            {isImageType && (
+              <div
+                className="relative mx-auto flex items-center justify-center overflow-hidden rounded-lg"
+                style={{
+                  aspectRatio: RATIOS.find((r) => r.id === ratio)?.ratio,
+                  height: 220,
+                  background: imageUrl ? undefined : `linear-gradient(135deg, ${C.raised}, ${C.ink})`,
+                  border: `1px solid ${C.line}`,
+                }}
+              >
+                {imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={imageUrl}
+                    alt="Generated post image"
+                    className="h-full w-full object-cover"
+                  />
+                ) : imageGenerating ? (
+                  <Loader2 size={20} className="animate-spin" color={C.muted} />
+                ) : (
                   <span
-                    className="absolute right-2 bottom-2 rounded px-1.5 py-0.5 font-mono text-[10px]"
-                    style={{ background: C.ink, color: C.paper }}
+                    className="flex h-11 w-11 items-center justify-center rounded-full"
+                    style={{ background: C.amber }}
                   >
-                    {videoDuration}
+                    <ImageIcon size={18} color={C.ink} />
                   </span>
                 )}
                 <span
                   className="absolute top-2 left-2 flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px]"
                   style={{ background: C.ink, color: C.muted }}
                 >
-                  {isVideo ? <Film size={10} /> : <ImageIcon size={10} />}{" "}
-                  {RATIOS.find((r) => r.id === ratio)?.sub.split(" · ")[0]}
+                  <ImageIcon size={10} /> {RATIOS.find((r) => r.id === ratio)?.sub.split(" · ")[0]}
                 </span>
+                {imageUrl && !imageGenerating && (
+                  <button
+                    onClick={generateImage}
+                    className="absolute right-2 bottom-2 flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px]"
+                    style={{ background: C.ink, color: C.paper }}
+                  >
+                    <RefreshCw size={10} /> Regenerate
+                  </button>
+                )}
               </div>
+            )}
+            {isImageType && imageError && (
+              <p className="text-[11px]" style={{ color: C.red }}>
+                {imageError}{" "}
+                <button onClick={generateImage} className="underline">
+                  Retry
+                </button>
+              </p>
             )}
             <label className="text-xs" style={{ color: C.muted }}>
               {isVideo ? "Script" : "Caption"}
@@ -626,7 +742,11 @@ export function ContentStudio({
             <button
               onClick={handleSchedule}
               disabled={
-                targets.size === 0 || !scheduleAt || submitting || (isVideo && !videoUrl)
+                targets.size === 0 ||
+                !scheduleAt ||
+                submitting ||
+                (isVideo && !videoUrl) ||
+                (isImageType && !imageUrl)
               }
               className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
               style={{ background: C.green, color: C.ink }}

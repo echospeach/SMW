@@ -9,6 +9,7 @@ export type PostSummary = {
   duration: string | null;
   ratio: Ratio | null;
   videoUrl: string | null;
+  imageUrl: string | null;
   scheduledAt: Date | null;
   publishedAt: Date | null;
   createdAt: Date;

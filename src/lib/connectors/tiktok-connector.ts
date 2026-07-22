@@ -1,7 +1,7 @@
 import { PlatformId } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
-import { publishVideo, refreshAccessToken } from "./tiktok";
-import type { PlatformConnector, PublishInput, PublishResult } from "./types";
+import { fetchVideoMetrics, publishVideo, refreshAccessToken, resolvePublishedVideoId } from "./tiktok";
+import type { PlatformConnector, PostMetrics, PublishInput, PublishResult } from "./types";
 
 // Real connect/disconnect happens through the OAuth round trip (see
 // src/app/api/accounts/tiktok/{authorize,callback}) rather than these
@@ -72,5 +72,23 @@ export class TikTokConnector implements PlatformConnector {
 
   async checkStatus(): Promise<"published"> {
     return "published";
+  }
+
+  // externalPostId is the publish_id returned by publish(), not TikTok's
+  // final video ID -- resolve it first via the publish-status endpoint.
+  // Returns null (not an error) while moderation is still pending.
+  async fetchMetrics(userId: string, externalPostId: string): Promise<PostMetrics | null> {
+    const accessToken = await this.getValidAccessToken(userId);
+    const videoId = await resolvePublishedVideoId(accessToken, externalPostId);
+    if (!videoId) return null;
+
+    const metrics = await fetchVideoMetrics(accessToken, videoId);
+    if (!metrics) return null;
+    return {
+      likes: metrics.like_count,
+      comments: metrics.comment_count,
+      shares: metrics.share_count,
+      views: metrics.view_count,
+    };
   }
 }

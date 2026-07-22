@@ -23,6 +23,15 @@ export function Ticket({ post }: { post: PostSummary }) {
       style={{ background: C.panel, border: `1px dashed ${C.line}` }}
     >
       <PlatformBadge id={post.platformId} />
+      {post.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={post.imageUrl}
+          alt=""
+          className="h-10 w-10 shrink-0 rounded object-cover"
+          style={{ border: `1px solid ${C.line}` }}
+        />
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           {post.type === "VIDEO" &&

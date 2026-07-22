@@ -12,6 +12,7 @@ export const QueueCreateSchema = z.object({
   duration: z.string().optional(),
   ratio: z.enum(["PORTRAIT", "SQUARE", "LANDSCAPE"]).optional(),
   videoUrl: z.string().url().optional(),
+  imageUrl: z.string().url().optional(),
   trendLabel: z.string().optional(),
 });
 

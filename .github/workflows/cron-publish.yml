@@ -19,3 +19,13 @@ jobs:
         env:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      # Cheap read-only calls to refresh post-performance metrics -- piggybacks
+      # on this same 5-minute trigger instead of needing its own schedule.
+      - name: Call /api/cron/metrics
+        if: ${{ vars.CRON_ENABLED == 'true' }}
+        run: |
+          curl -sf -X GET "${APP_URL}/api/cron/metrics" \
+            -H "x-cron-secret: ${CRON_SECRET}"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

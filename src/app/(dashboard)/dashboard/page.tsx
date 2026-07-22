@@ -3,10 +3,12 @@ import { Plus, Radio } from "lucide-react";
 import { redirect } from "next/navigation";
 import { requireUserId } from "@/lib/api-auth";
 import { computeQueueStats } from "@/lib/dashboard-stats";
+import { computeOnboardingProgress } from "@/lib/onboarding";
 import { prisma } from "@/lib/prisma";
 import { PLATFORMS, C } from "@/lib/theme";
 import { StatCard } from "@/components/ui/stat-card";
 import { Ticket } from "@/components/ui/ticket";
+import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
 
 function fmtDay(d: Date) {
   return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
@@ -19,16 +21,23 @@ export default async function DashboardPage() {
   const userId = await requireUserId();
   if (!userId) redirect("/login");
 
-  const [posts, connectedCount] = await Promise.all([
+  const [posts, connectedCount, user] = await Promise.all([
     prisma.post.findMany({
       where: { userId },
       orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }],
       take: 50,
     }),
     prisma.socialConnection.count({ where: { userId, connected: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { onboardingDismissed: true } }),
   ]);
 
   const { scheduled, published, drafts, next } = computeQueueStats(posts);
+  const onboarding = computeOnboardingProgress({
+    hasConnection: connectedCount > 0,
+    hasGeneratedContent: posts.length > 0,
+    hasScheduledPost: posts.some((p) => p.status === "SCHEDULED" || p.status === "PUBLISHED"),
+  });
+  const showOnboarding = !user?.onboardingDismissed && !onboarding.allDone;
 
   return (
     <div className="space-y-6">
@@ -40,6 +49,8 @@ export default async function DashboardPage() {
           Everything scheduled, published, or waiting on you.
         </p>
       </div>
+
+      {showOnboarding && <OnboardingChecklist steps={onboarding.steps} />}
 
       <div className="flex flex-wrap gap-3">
         <StatCard eyebrow="Scheduled" value={scheduled} sub="Queued to publish" />

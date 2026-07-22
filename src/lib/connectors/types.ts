@@ -6,6 +6,7 @@ export type PublishInput = {
   ratio?: Ratio | null;
   duration?: string | null;
   videoUrl?: string | null;
+  imageUrl?: string | null;
 };
 
 export type PublishResult = {
@@ -15,10 +16,22 @@ export type PublishResult = {
 
 export type PublishStatus = "published" | "failed" | "pending";
 
+export type PostMetrics = {
+  impressions?: number;
+  likes?: number;
+  comments?: number;
+  shares?: number;
+  views?: number;
+};
+
 export interface PlatformConnector {
   readonly platformId: PlatformId;
   connect(userId: string): Promise<{ handle: string }>;
   disconnect(userId: string): Promise<void>;
   publish(userId: string, input: PublishInput): Promise<PublishResult>;
   checkStatus(userId: string, externalPostId: string): Promise<PublishStatus>;
+  // Optional: only real connectors with a working insights API implement
+  // this. MockConnector and connectors pending verification omit it, and
+  // callers must check `if (connector.fetchMetrics)` before calling.
+  fetchMetrics?(userId: string, externalPostId: string): Promise<PostMetrics | null>;
 }

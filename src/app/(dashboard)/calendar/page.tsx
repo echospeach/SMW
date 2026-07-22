@@ -65,6 +65,14 @@ export default async function CalendarPage() {
                       style={{ background: C.raised }}
                     >
                       <PlatformBadge id={item.platformId} size={10} />
+                      {item.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          className="h-3.5 w-3.5 shrink-0 rounded-sm object-cover"
+                        />
+                      )}
                       <span
                         className="flex-1 truncate font-mono text-[10px]"
                         style={{ color: meta.color }}

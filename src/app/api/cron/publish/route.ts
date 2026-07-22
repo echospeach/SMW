@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getConnector } from "@/lib/connectors/registry";
 import { prisma } from "@/lib/prisma";
 import { isSlotDue, startOfDay } from "@/lib/scheduling/engine";
+import { sendPostFailedEmail, sendPostPublishedEmail } from "@/lib/email/send";
 
 async function publishDueQueueItems() {
   const due = await prisma.post.findMany({
@@ -19,19 +20,28 @@ async function publishDueQueueItems() {
         ratio: post.ratio,
         duration: post.duration,
         videoUrl: post.videoUrl,
+        imageUrl: post.imageUrl,
       });
       // Scope the update to status: "SCHEDULED" so a concurrent invocation can't double-publish this row.
       const updated = await prisma.post.updateMany({
         where: { id: post.id, status: "SCHEDULED" },
-        data: { status: "PUBLISHED", publishedAt: result.publishedAt },
+        data: {
+          status: "PUBLISHED",
+          publishedAt: result.publishedAt,
+          externalPostId: result.externalPostId,
+        },
       });
-      if (updated.count > 0) published++;
+      if (updated.count > 0) {
+        published++;
+        await sendPostPublishedEmail(post.userId, post.platformId, post.text);
+      }
     } catch (err) {
       await prisma.post.updateMany({
         where: { id: post.id, status: "SCHEDULED" },
         data: { status: "FAILED", failureReason: String(err) },
       });
       failed++;
+      await sendPostFailedEmail(post.userId, post.platformId, post.text, String(err));
     }
   }
 
@@ -77,21 +87,25 @@ async function runAutomationSlots() {
           ratio: draft.ratio,
           duration: draft.duration,
           videoUrl: draft.videoUrl,
+          imageUrl: draft.imageUrl,
         });
         await prisma.post.update({
           where: { id: draft.id },
           data: {
             status: "PUBLISHED",
             publishedAt: result.publishedAt,
+            externalPostId: result.externalPostId,
             sourceAutomationRuleId: rule.id,
           },
         });
         fired++;
+        await sendPostPublishedEmail(rule.userId, rule.platformId, draft.text);
       } catch (err) {
         await prisma.post.update({
           where: { id: draft.id },
           data: { status: "FAILED", failureReason: String(err), sourceAutomationRuleId: rule.id },
         });
+        await sendPostFailedEmail(rule.userId, rule.platformId, draft.text, String(err));
       }
     }
   }

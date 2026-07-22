@@ -1,0 +1,20 @@
+name: Weekly recap email
+
+on:
+  schedule:
+    - cron: "0 14 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      # Skips (not fails) until CRON_ENABLED is set — same pattern as cron-publish.yml.
+      - name: Call /api/cron/weekly-recap
+        if: ${{ vars.CRON_ENABLED == 'true' }}
+        run: |
+          curl -sf -X GET "${APP_URL}/api/cron/weekly-recap" \
+            -H "x-cron-secret: ${CRON_SECRET}"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
