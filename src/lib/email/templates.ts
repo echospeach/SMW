@@ -51,6 +51,18 @@ export function passwordResetTemplate(resetUrl: string) {
   return { subject, html, text: text_ };
 }
 
+export function cronFailureTemplate(cronName: string, error: string) {
+  const subject = `Cron job "${cronName}" failed`;
+  const html = wrap(
+    subject,
+    `<p style="margin:0 0 8px;color:#4a5568">The "${cronName}" cron job threw an unhandled error:</p>
+     <p style="margin:0;color:#E2645A;font-family:monospace;font-size:13px">${error}</p>`,
+    "Sent automatically to SMW's operator email whenever a cron run fails.",
+  );
+  const text_ = `${subject}\n\nThe "${cronName}" cron job threw an unhandled error:\n${error}`;
+  return { subject, html, text: text_ };
+}
+
 export function weeklyRecapTemplate(stats: { published: number; scheduled: number; topPostText?: string }) {
   const subject = "Your week on SMW";
   const html = wrap(

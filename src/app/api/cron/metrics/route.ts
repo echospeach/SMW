@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConnector } from "@/lib/connectors/registry";
 import { prisma } from "@/lib/prisma";
+import { sendCronFailureAlert } from "@/lib/email/send";
 
 const LOOKBACK_DAYS = 30;
 
@@ -53,6 +54,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, ...summary });
   } catch (err) {
     await prisma.cronRun.create({ data: { name: "metrics", ok: false, error: String(err) } });
+    await sendCronFailureAlert("metrics", String(err));
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
   }
 }

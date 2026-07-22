@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getConnector } from "@/lib/connectors/registry";
 import { prisma } from "@/lib/prisma";
 import { isSlotDue, startOfDay } from "@/lib/scheduling/engine";
-import { sendPostFailedEmail, sendPostPublishedEmail } from "@/lib/email/send";
+import { sendCronFailureAlert, sendPostFailedEmail, sendPostPublishedEmail } from "@/lib/email/send";
 
 async function publishDueQueueItems() {
   const due = await prisma.post.findMany({
@@ -128,6 +128,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, ...summary });
   } catch (err) {
     await prisma.cronRun.create({ data: { name: "publish", ok: false, error: String(err) } });
+    await sendCronFailureAlert("publish", String(err));
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bell, Check, Feather, LifeBuoy, ToggleLeft, ToggleRight } from "lucide-react";
+import { Bell, Check, Feather, LifeBuoy, ToggleLeft, ToggleRight, UserCircle } from "lucide-react";
 import { C, SUPPORT_EMAIL } from "@/lib/theme";
 
 type NotificationSettings = {
@@ -14,6 +14,11 @@ type BrandVoiceSettings = {
   brandIndustry: string;
   brandToneDescription: string;
   brandExamplePosts: string[];
+};
+
+type AvatarSettings = {
+  heygenAvatarId: string;
+  heygenVoiceId: string;
 };
 
 const TOGGLES: { key: keyof NotificationSettings; label: string; sub: string }[] = [
@@ -37,9 +42,11 @@ const TOGGLES: { key: keyof NotificationSettings; label: string; sub: string }[]
 export function SettingsView({
   initial,
   initialBrandVoice,
+  initialAvatar,
 }: {
   initial: NotificationSettings;
   initialBrandVoice: BrandVoiceSettings;
+  initialAvatar: AvatarSettings;
 }) {
   const [settings, setSettings] = useState(initial);
   const [, startTransition] = useTransition();
@@ -49,6 +56,11 @@ export function SettingsView({
   const [examples, setExamples] = useState(initialBrandVoice.brandExamplePosts.join("\n\n"));
   const [savingVoice, setSavingVoice] = useState(false);
   const [voiceSaved, setVoiceSaved] = useState(false);
+
+  const [avatarId, setAvatarId] = useState(initialAvatar.heygenAvatarId);
+  const [voiceId, setVoiceId] = useState(initialAvatar.heygenVoiceId);
+  const [savingAvatar, setSavingAvatar] = useState(false);
+  const [avatarSaved, setAvatarSaved] = useState(false);
 
   function toggle(key: keyof NotificationSettings) {
     const next = { ...settings, [key]: !settings[key] };
@@ -82,6 +94,25 @@ export function SettingsView({
       setTimeout(() => setVoiceSaved(false), 2000);
     } finally {
       setSavingVoice(false);
+    }
+  }
+
+  async function saveAvatar() {
+    setSavingAvatar(true);
+    setAvatarSaved(false);
+    try {
+      await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          heygenAvatarId: avatarId.trim(),
+          heygenVoiceId: voiceId.trim(),
+        }),
+      });
+      setAvatarSaved(true);
+      setTimeout(() => setAvatarSaved(false), 2000);
+    } finally {
+      setSavingAvatar(false);
     }
   }
 
@@ -173,6 +204,51 @@ export function SettingsView({
           >
             {voiceSaved ? <Check size={13} /> : null}
             {savingVoice ? "Saving…" : voiceSaved ? "Saved" : "Save brand voice"}
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="flex items-center gap-1.5 font-mono text-xs tracking-[0.15em] uppercase" style={{ color: C.muted }}>
+          <UserCircle size={12} /> My avatar
+        </h2>
+        <p className="mt-1.5 text-xs" style={{ color: C.muted }}>
+          Optional. Create your digital twin at heygen.com — that&apos;s their consent process,
+          not ours — then paste your avatar ID here to use it for videos in Content Studio.
+        </p>
+        <div className="mt-3 space-y-3 rounded-xl p-4" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
+          <div>
+            <label className="text-xs" style={{ color: C.muted }}>
+              HeyGen avatar ID
+            </label>
+            <input
+              value={avatarId}
+              onChange={(e) => setAvatarId(e.target.value)}
+              placeholder="e.g. a1b2c3d4e5f6"
+              className="mt-1 w-full rounded-lg px-3 py-2 font-mono text-xs outline-none placeholder:opacity-50"
+              style={{ background: C.raised, color: C.paper, border: `1px solid ${C.line}` }}
+            />
+          </div>
+          <div>
+            <label className="text-xs" style={{ color: C.muted }}>
+              HeyGen voice ID (optional)
+            </label>
+            <input
+              value={voiceId}
+              onChange={(e) => setVoiceId(e.target.value)}
+              placeholder="e.g. f7g8h9i0j1k2"
+              className="mt-1 w-full rounded-lg px-3 py-2 font-mono text-xs outline-none placeholder:opacity-50"
+              style={{ background: C.raised, color: C.paper, border: `1px solid ${C.line}` }}
+            />
+          </div>
+          <button
+            onClick={saveAvatar}
+            disabled={savingAvatar}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium disabled:opacity-40"
+            style={{ background: C.amber, color: C.ink }}
+          >
+            {avatarSaved ? <Check size={13} /> : null}
+            {savingAvatar ? "Saving…" : avatarSaved ? "Saved" : "Save avatar"}
           </button>
         </div>
       </div>

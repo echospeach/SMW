@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireUserId } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { C } from "@/lib/theme";
-import { getVideoMonthlyLimit } from "@/lib/plan";
+import { getAvatarMonthlyLimit, getVideoMonthlyLimit } from "@/lib/plan";
 import { startOfMonth } from "@/lib/scheduling/engine";
 import { ContentStudio } from "@/components/studio/content-studio";
 
@@ -10,15 +10,21 @@ export default async function StudioPage() {
   const userId = await requireUserId();
   if (!userId) redirect("/login");
 
-  const [connections, user] = await Promise.all([
+  const [connections, user, settings] = await Promise.all([
     prisma.socialConnection.findMany({ where: { userId, connected: true } }),
     prisma.user.findUnique({ where: { id: userId }, select: { plan: true } }),
+    prisma.userSettings.findUnique({ where: { userId }, select: { heygenAvatarId: true } }),
   ]);
   const plan = user?.plan ?? "STARTER";
 
-  const videoRendersUsed = await prisma.videoRenderLog.count({
-    where: { userId, createdAt: { gte: startOfMonth(new Date()) } },
-  });
+  const [videoRendersUsed, avatarRendersUsed] = await Promise.all([
+    prisma.videoRenderLog.count({
+      where: { userId, createdAt: { gte: startOfMonth(new Date()) } },
+    }),
+    prisma.avatarRenderLog.count({
+      where: { userId, createdAt: { gte: startOfMonth(new Date()) } },
+    }),
+  ]);
 
   return (
     <div>
@@ -34,6 +40,9 @@ export default async function StudioPage() {
           plan={plan}
           videoRendersUsed={videoRendersUsed}
           videoRendersLimit={getVideoMonthlyLimit(plan)}
+          hasAvatar={Boolean(settings?.heygenAvatarId)}
+          avatarRendersUsed={avatarRendersUsed}
+          avatarRendersLimit={getAvatarMonthlyLimit(plan)}
         />
       </div>
     </div>

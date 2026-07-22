@@ -1,6 +1,7 @@
 "use client";
 
 import { C, SUPPORT_EMAIL } from "@/lib/theme";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 export default function Error({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
@@ -13,12 +14,7 @@ export default function Error({ reset }: { error: Error & { digest?: string }; r
         style={{ background: C.panel, border: `1px solid ${C.line}` }}
       >
         <div className="mb-6 flex items-center justify-center gap-2">
-          <div
-            className="flex h-7 w-7 items-center justify-center rounded-md text-sm font-bold"
-            style={{ background: C.amber, color: C.ink }}
-          >
-            S
-          </div>
+          <LogoMark />
           <span className="text-sm font-bold tracking-widest" style={{ color: C.paper }}>
             SMW
           </span>

@@ -11,6 +11,8 @@ const SettingsPatchSchema = z.object({
   brandIndustry: z.string().max(200).optional(),
   brandToneDescription: z.string().max(2000).optional(),
   brandExamplePosts: z.array(z.string().max(2000)).max(10).optional(),
+  heygenAvatarId: z.string().max(200).optional(),
+  heygenVoiceId: z.string().max(200).optional(),
 });
 
 const DEFAULTS = {
@@ -33,6 +35,8 @@ export async function GET() {
     brandIndustry: settings?.brandIndustry ?? "",
     brandToneDescription: settings?.brandToneDescription ?? "",
     brandExamplePosts: settings?.brandExamplePosts ?? [],
+    heygenAvatarId: settings?.heygenAvatarId ?? "",
+    heygenVoiceId: settings?.heygenVoiceId ?? "",
   });
 }
 
@@ -63,5 +67,7 @@ export async function PATCH(req: NextRequest) {
     brandIndustry: settings.brandIndustry ?? "",
     brandToneDescription: settings.brandToneDescription ?? "",
     brandExamplePosts: settings.brandExamplePosts,
+    heygenAvatarId: settings.heygenAvatarId ?? "",
+    heygenVoiceId: settings.heygenVoiceId ?? "",
   });
 }

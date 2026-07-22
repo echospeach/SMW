@@ -32,6 +32,10 @@ export default async function SettingsPage() {
             brandToneDescription: settings?.brandToneDescription ?? "",
             brandExamplePosts: settings?.brandExamplePosts ?? [],
           }}
+          initialAvatar={{
+            heygenAvatarId: settings?.heygenAvatarId ?? "",
+            heygenVoiceId: settings?.heygenVoiceId ?? "",
+          }}
         />
       </div>
     </div>

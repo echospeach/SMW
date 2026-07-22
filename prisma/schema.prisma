@@ -77,6 +77,7 @@ model User {
   videoRenderLogs VideoRenderLog[]
   referralCredits ReferralCredit[]
   passwordResetTokens PasswordResetToken[]
+  avatarRenderLogs AvatarRenderLog[]
 }
 
 // Single-use, expiring token for the forgot-password flow. The raw token is
@@ -170,6 +171,8 @@ model UserSettings {
   brandIndustry         String?
   brandToneDescription  String?  @db.Text
   brandExamplePosts     String[] @default([])
+  heygenAvatarId        String?
+  heygenVoiceId         String?
 }
 
 model Post {
@@ -250,6 +253,23 @@ model VideoRenderLog {
   @@index([userId, contentHash])
 }
 
+// Exact mirror of VideoRenderLog's shape, kept as a fully separate table so
+// its monthly count is independent of the existing video/image/thumbnail
+// pool -- HeyGen avatar videos cost ~20-80x more per unit, so they get their
+// own small quota rather than sharing (or being subsidized by) the cheap pool.
+model AvatarRenderLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentHash   String
+  heygenVideoId String?
+  videoUrl      String?
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, contentHash])
+}
+
 // Fully separate identity space from User -- the admin portal has its own
 // login and session mechanism, deliberately isolated from Auth.js. Every row
 // is a full admin; no roles/permissions, kept minimal on purpose.
@@ -259,6 +279,21 @@ model AdminUser {
   passwordHash String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  auditLogs AdminAuditLog[]
+}
+
+// Append-only record of every admin mutation -- who did what, to whom, when.
+model AdminAuditLog {
+  id        String    @id @default(cuid())
+  adminId   String
+  admin     AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action    String
+  targetId  String?
+  detail    Json?
+  createdAt DateTime  @default(now())
+
+  @@index([adminId, createdAt])
 }
 
 // Append-only run history for the cron routes (publish/metrics/weekly-recap),

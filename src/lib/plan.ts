@@ -22,3 +22,17 @@ const VIDEO_MONTHLY_LIMIT: Record<Plan, number> = {
 export function getVideoMonthlyLimit(plan: Plan): number {
   return VIDEO_MONTHLY_LIMIT[plan];
 }
+
+// Separate, much smaller pool from VIDEO_MONTHLY_LIMIT -- HeyGen avatar
+// videos cost roughly $1-4/minute (vs ~$0.05 for a regular AI video), so they
+// get their own cap rather than sharing (or being subsidized by) the cheap
+// pool. Same Growth+ eligibility as regular video (planIncludesVideo).
+const AVATAR_MONTHLY_LIMIT: Record<Plan, number> = {
+  STARTER: 0,
+  GROWTH: 5,
+  SCALE: 15,
+};
+
+export function getAvatarMonthlyLimit(plan: Plan): number {
+  return AVATAR_MONTHLY_LIMIT[plan];
+}

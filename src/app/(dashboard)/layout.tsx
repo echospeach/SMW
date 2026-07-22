@@ -3,6 +3,7 @@ import { logout } from "@/lib/actions/auth";
 import { requireUserId } from "@/lib/api-auth";
 import { auth } from "@/lib/auth";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
+import { LogoMark } from "@/components/ui/logo-mark";
 import { prisma } from "@/lib/prisma";
 import { C, SUPPORT_EMAIL } from "@/lib/theme";
 import { redirect } from "next/navigation";
@@ -23,12 +24,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         style={{ borderRight: `1px solid ${C.line}` }}
       >
         <div className="mb-2 flex items-center gap-2 px-2 py-3">
-          <div
-            className="flex h-7 w-7 items-center justify-center rounded-md text-sm font-bold"
-            style={{ background: C.amber, color: C.ink }}
-          >
-            S
-          </div>
+          <LogoMark />
           <span className="text-sm font-bold tracking-widest" style={{ color: C.paper }}>
             SMW
           </span>

@@ -10,7 +10,10 @@ import {
   Play,
   RefreshCw,
   Sparkles,
+  ToggleLeft,
+  ToggleRight,
   TrendingUp,
+  UserCircle,
   Video,
 } from "lucide-react";
 import type { ContentType, Plan, PlatformId, Ratio, Tone } from "@/generated/prisma/enums";
@@ -38,16 +41,25 @@ export function ContentStudio({
   plan,
   videoRendersUsed,
   videoRendersLimit,
+  hasAvatar,
+  avatarRendersUsed,
+  avatarRendersLimit,
 }: {
   connectedPlatforms: PlatformId[];
   plan: Plan;
   videoRendersUsed: number;
   videoRendersLimit: number;
+  hasAvatar: boolean;
+  avatarRendersUsed: number;
+  avatarRendersLimit: number;
 }) {
   const router = useRouter();
   const videoAllowed = planIncludesVideo(plan);
   const [rendersUsed, setRendersUsed] = useState(videoRendersUsed);
   const videoCapReached = rendersUsed >= videoRendersLimit;
+  const [useAvatar, setUseAvatar] = useState(false);
+  const [avatarRendersUsedState, setAvatarRendersUsedState] = useState(avatarRendersUsed);
+  const avatarCapReached = avatarRendersUsedState >= avatarRendersLimit;
   const [type, setType] = useState<ContentType>("TEXT_POST");
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState<Tone>("CONFIDENT");
@@ -202,12 +214,16 @@ export function ContentStudio({
     setRendering(true);
     setRenderError(null);
     setVideoUrl(null);
+    const usingAvatar = useAvatar && hasAvatar;
     try {
-      const startRes = await fetch("/api/render-video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script: draft, ratio }),
-      });
+      const startRes = await fetch(
+        usingAvatar ? "/api/render-avatar-video" : "/api/render-video",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(usingAvatar ? { script: draft } : { script: draft, ratio }),
+        },
+      );
       const startData = await startRes.json().catch(() => null);
       if (!startRes.ok) {
         setRenderError(startData?.error ?? "Couldn't start the render. Try again.");
@@ -219,7 +235,8 @@ export function ContentStudio({
         setVideoUrl(startData.videoUrl);
         return;
       }
-      setRendersUsed((n) => n + 1);
+      if (usingAvatar) setAvatarRendersUsedState((n) => n + 1);
+      else setRendersUsed((n) => n + 1);
       const { jobId } = startData;
 
       // Each beat now generates an AI image + narration clip before rendering.
@@ -228,11 +245,14 @@ export function ContentStudio({
       // stretch well past a couple of minutes -- give it real headroom.
       for (let attempt = 0; attempt < 150; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 3000));
-        const statusRes = await fetch(`/api/render-video/${jobId}`);
+        const statusRes = await fetch(
+          usingAvatar ? `/api/render-avatar-video/${jobId}` : `/api/render-video/${jobId}`,
+        );
         if (!statusRes.ok) continue;
         const job = await statusRes.json();
-        if (job.status === "done") {
-          setVideoUrl(job.url);
+        const doneStatus = usingAvatar ? "completed" : "done";
+        if (job.status === doneStatus) {
+          setVideoUrl(usingAvatar ? job.videoUrl : job.url);
           return;
         }
         if (job.status === "failed") {
@@ -694,9 +714,40 @@ export function ContentStudio({
             />
             {isVideo && (
               <div>
+                {hasAvatar && (
+                  <div
+                    className="mb-3 flex items-center gap-3 rounded-lg p-3"
+                    style={{ background: C.raised, border: `1px solid ${C.line}` }}
+                  >
+                    <UserCircle size={16} color={C.muted} className="shrink-0" />
+                    <div className="flex-1">
+                      <div className="text-xs font-medium" style={{ color: C.paper }}>
+                        Use my avatar
+                      </div>
+                      <div className="mt-0.5 text-[11px]" style={{ color: C.muted }}>
+                        Renders with your HeyGen digital twin instead of AI-generated visuals.{" "}
+                        {avatarCapReached
+                          ? `You've used all ${avatarRendersLimit} avatar videos this month.`
+                          : `${avatarRendersUsedState} of ${avatarRendersLimit} avatar videos used this month.`}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setUseAvatar((v) => !v)}
+                      disabled={avatarCapReached}
+                      className="shrink-0 disabled:opacity-40"
+                      style={{ color: useAvatar ? C.green : C.muted }}
+                    >
+                      {useAvatar ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                    </button>
+                  </div>
+                )}
                 <button
                   onClick={renderVideo}
-                  disabled={rendering || !draft.trim() || videoCapReached}
+                  disabled={
+                    rendering ||
+                    !draft.trim() ||
+                    (useAvatar && hasAvatar ? avatarCapReached : videoCapReached)
+                  }
                   className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
                   style={{ background: C.raised, color: C.paper, border: `1px solid ${C.line}` }}
                 >

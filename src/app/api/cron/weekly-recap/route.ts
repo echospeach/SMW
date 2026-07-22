@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendWeeklyRecapEmail } from "@/lib/email/send";
+import { sendCronFailureAlert, sendWeeklyRecapEmail } from "@/lib/email/send";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, sent });
   } catch (err) {
     await prisma.cronRun.create({ data: { name: "weekly-recap", ok: false, error: String(err) } });
+    await sendCronFailureAlert("weekly-recap", String(err));
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
   }
 }

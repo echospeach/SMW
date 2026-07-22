@@ -2,6 +2,11 @@ import { ContentType, PlatformId, Ratio } from "@/generated/prisma/enums";
 
 export const SUPPORT_EMAIL = "echospeach@gmail.com";
 
+// Set once via Vercel env var, not a self-serve upload UI -- a logo changes
+// rarely and only the developer would ever set it. Falls back to the
+// built-in amber "S" mark (LogoMark component) when unset.
+export const APP_LOGO_URL = process.env.NEXT_PUBLIC_APP_LOGO_URL || null;
+
 // Design system colors, ported verbatim from the original prototype (smw-dashboard.jsx).
 export const C = {
   ink: "#12151C",

@@ -1,7 +1,9 @@
 import type { PlatformId } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
+import { SUPPORT_EMAIL } from "@/lib/theme";
 import { getResendClient } from "./resend-client";
 import {
+  cronFailureTemplate,
   passwordResetTemplate,
   postFailedTemplate,
   postPublishedTemplate,
@@ -48,6 +50,12 @@ export async function sendPostFailedEmail(
 // account exists), so this stays a dumb, unconditional send like the others.
 export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   await send(email, passwordResetTemplate(resetUrl));
+}
+
+// Operator alert, not a user notification -- sent unconditionally to
+// SUPPORT_EMAIL, no UserSettings preference gate.
+export async function sendCronFailureAlert(cronName: string, error: string) {
+  await send(SUPPORT_EMAIL, cronFailureTemplate(cronName, error));
 }
 
 export async function sendWeeklyRecapEmail(

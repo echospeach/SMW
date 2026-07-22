@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Gift } from "lucide-react";
 import { register } from "@/lib/actions/auth";
 import { C } from "@/lib/theme";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 function RegisterForm() {
   const [state, formAction, pending] = useActionState(register, undefined);
@@ -21,12 +22,7 @@ function RegisterForm() {
         style={{ background: C.panel, border: `1px solid ${C.line}` }}
       >
         <div className="mb-6 flex items-center gap-2">
-          <div
-            className="flex h-7 w-7 items-center justify-center rounded-md text-sm font-bold"
-            style={{ background: C.amber, color: C.ink }}
-          >
-            S
-          </div>
+          <LogoMark />
           <span className="text-sm font-bold tracking-widest" style={{ color: C.paper }}>
             SMW
           </span>

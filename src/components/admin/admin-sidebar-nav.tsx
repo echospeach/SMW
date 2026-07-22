@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, FileText, LayoutDashboard, Users, Wallet } from "lucide-react";
+import { Activity, FileText, LayoutDashboard, ScrollText, Users, Wallet } from "lucide-react";
 import { C } from "@/lib/theme";
 
 const NAV_ITEMS = [
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/admin/revenue", label: "Revenue", icon: Wallet, exact: false },
   { href: "/admin/health", label: "Health", icon: Activity, exact: false },
   { href: "/admin/content", label: "Content", icon: FileText, exact: false },
+  { href: "/admin/audit", label: "Audit", icon: ScrollText, exact: false },
 ];
 
 export function AdminSidebarNav() {
