@@ -20,6 +20,7 @@ export function ThumbnailStudio({ plan, used, limit }: { plan: Plan; used: numbe
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
@@ -56,6 +57,29 @@ export function ThumbnailStudio({ plan, used, limit }: { plan: Plan; used: numbe
       setError("Couldn't reach the server. Check your connection and try again.");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleDownload() {
+    if (!resultUrl || downloading) return;
+    setDownloading(true);
+    try {
+      // A plain <a download> is ignored by browsers for cross-origin URLs
+      // (this is served from Vercel Blob's own domain) -- it just navigates
+      // there instead of downloading. Fetching the bytes and downloading via
+      // a blob: URL (same-origin) is what actually forces a save.
+      const res = await fetch(resultUrl);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = "thumbnail.png";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -258,16 +282,14 @@ export function ThumbnailStudio({ plan, used, limit }: { plan: Plan; used: numbe
                 className="h-full w-full object-cover"
               />
             </div>
-            <a
-              href={resultUrl}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full rounded-lg py-2.5 text-center text-sm font-medium"
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="block w-full rounded-lg py-2.5 text-center text-sm font-medium disabled:opacity-60"
               style={{ background: C.green, color: C.ink }}
             >
-              Download
-            </a>
+              {downloading ? "Downloading…" : "Download"}
+            </button>
           </>
         )}
       </div>

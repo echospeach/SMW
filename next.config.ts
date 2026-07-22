@@ -12,7 +12,7 @@ const cspHeader = `
   img-src 'self' blob: data: https://*.public.blob.vercel-storage.com;
   media-src 'self' https://*.public.blob.vercel-storage.com;
   font-src 'self' data:;
-  connect-src 'self';
+  connect-src 'self' https://*.public.blob.vercel-storage.com;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
