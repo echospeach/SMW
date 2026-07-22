@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import fs from "node:fs";
-import path from "node:path";
 
 // Temporary: diagnose whether production's sharp build (resvg-based wasm
 // build) supports SVG gradients / text the way the thumbnail overlay needs.
@@ -45,36 +44,40 @@ export async function GET() {
     sample(arialText, [[20, 80], [100, 100]]),
   ]);
 
-  let nativeResolve: string | null = null;
-  let nativeResolveError: string | null = null;
-  try {
-    nativeResolve = require.resolve("@img/sharp-linux-x64/lib/sharp-linux-x64.node");
-  } catch (err) {
-    nativeResolveError = err instanceof Error ? err.message : String(err);
+  function tryResolve(id: string) {
+    try {
+      return { ok: true, path: require.resolve(id) };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
   }
 
-  let sharpModuleDir: string | null = null;
+  const candidates = [
+    "@img/sharp-linux-x64/lib/sharp-linux-x64.node",
+    "@img/sharp-linuxmusl-x64/lib/sharp-linuxmusl-x64.node",
+    "@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.42",
+    "@img/sharp-libvips-linuxmusl-x64/lib/libvips-cpp.so.42",
+    "sharp/package.json",
+  ];
+  const resolves = Object.fromEntries(candidates.map((c) => [c, tryResolve(c)]));
+
+  let libcInfo: string | null = null;
   try {
-    sharpModuleDir = path.dirname(require.resolve("sharp/package.json"));
-  } catch {}
-  const imgDirListing = sharpModuleDir
-    ? (() => {
-        try {
-          return fs.readdirSync(path.join(sharpModuleDir!, "..", "@img"));
-        } catch (err) {
-          return `readdir failed: ${err instanceof Error ? err.message : String(err)}`;
-        }
-      })()
-    : null;
+    libcInfo = fs.existsSync("/lib/ld-musl-x86_64.so.1")
+      ? "musl (ld-musl-x86_64.so.1 present)"
+      : fs.existsSync("/lib64/ld-linux-x86-64.so.2") || fs.existsSync("/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2")
+        ? "glibc (ld-linux present)"
+        : "unknown";
+  } catch (err) {
+    libcInfo = `error: ${err instanceof Error ? err.message : String(err)}`;
+  }
 
   return NextResponse.json({
     arch: process.arch,
     platform: process.platform,
+    libcInfo,
     versions: sharp.versions,
-    nativeResolve,
-    nativeResolveError,
-    sharpModuleDir,
-    imgDirListing,
+    resolves,
     solid,
     gradient,
     plain,
